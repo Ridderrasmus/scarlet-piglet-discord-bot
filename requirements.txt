@@ -1,0 +1,3 @@
+gspread
+oath2client
+discord.py
