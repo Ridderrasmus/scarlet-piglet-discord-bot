@@ -208,4 +208,4 @@ async def schedule_loop():
     
         
 # Run the bot
-bot.run("MTAxMjA3NzI5NjUxNTAzOTMyNA.GVua6W.zwVpZ4ZlFYtuZDGxiX75TpDQEjwU7qlpMuzGAc")
+bot.run("MTAxMjA3NzI5NjUxNTAzOTMyNA.GPqhzM.eodwFgc3CporxAAbb7z8uzb03lmxGL3-w1meC4")
