@@ -41,10 +41,13 @@ def set_schedule_message_id(message_id):
 
 def get_schedule_message_id():
     msg_id = schedule_message_info_cell.value
-    msg_id = msg_id.strip("[]")
-    msg_id = msg_id.split(",")
-    msg_id = [int(msg_id[0]), int(msg_id[1])]
-    return msg_id
+    if (msg_id != None and msg_id != "[]" and msg_id != ""):
+        msg_id = msg_id.strip("[]")
+        msg_id = msg_id.split(",")
+        msg_id = [msg_id[0], msg_id[1]]
+        return msg_id
+    else:
+        return []
 
 def check_schedule_dates():
     next_sundays = get_next_n_sundays(int(date_amount_cell.value)+4)
