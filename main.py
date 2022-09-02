@@ -3,6 +3,7 @@ import discord
 import schedule
 from discord.ext import commands, tasks
 from discord import ui, app_commands
+import os
 
 
 #######################
@@ -208,4 +209,4 @@ async def schedule_loop():
     
         
 # Run the bot
-bot.run("MTAxMjA3NzI5NjUxNTAzOTMyNA.GPqhzM.eodwFgc3CporxAAbb7z8uzb03lmxGL3-w1meC4")
+bot.run(os.environ.get('DISCORD_TOKEN'))

@@ -1,10 +1,25 @@
 import gspread
 import datetime
 from oauth2client.service_account import ServiceAccountCredentials
+import os
 
 scope = ['https://www.googleapis.com/auth/spreadsheets', "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive"]
 
-creds = ServiceAccountCredentials.from_json_keyfile_name('client_secret.json', scope)
+
+keyvar = {
+    "type": os.environ.get('TYPE'),
+    "project_id": os.environ.get('PROJECT_ID'),
+    "private_key_id": os.environ.get('PROJECT_KEY_ID'),
+    "private_key": os.environ.get('PROJECT_KEY'),
+    "client_email": os.environ.get('CLIENT_EMAIL'),
+    "client_id": os.environ.get('CLIENT_ID'),
+    "auth_uri": os.environ.get('AUTH_URI'),
+    "token_uri": os.environ.get('TOKEN_URI'),
+    "auth_provider_x509_cert_url": os.environ.get('AUTH_PROVIDER_X509_CERT_URL'),
+    "client_x509_cert_url": os.environ.get('CLIENT_X509_CERT_URL')
+}
+
+creds = ServiceAccountCredentials.from_json_keyfile_dict(keyfile_dict=keyvar, scopes=scope)
 
 client = gspread.authorize(creds)
 
