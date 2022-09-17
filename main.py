@@ -209,4 +209,4 @@ async def schedule_loop():
     
         
 # Run the bot
-bot.run(os.environ.get('DISCORD_TOKEN'))
+bot.run(os.getenv('DISCORD_TOKEN'))

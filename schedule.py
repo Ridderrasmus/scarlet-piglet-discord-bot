@@ -2,21 +2,23 @@ import gspread
 import datetime
 from oauth2client.service_account import ServiceAccountCredentials
 import os
+from dotenv import load_dotenv
 
 scope = ['https://www.googleapis.com/auth/spreadsheets', "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive"]
 
 
+load_dotenv()
 keyvar = {
-    "type": os.environ.get('TYPE'),
-    "project_id": os.environ.get('PROJECT_ID'),
-    "private_key_id": os.environ.get('PROJECT_KEY_ID'),
-    "private_key": os.environ.get('PROJECT_KEY'),
-    "client_email": os.environ.get('CLIENT_EMAIL'),
-    "client_id": os.environ.get('CLIENT_ID'),
-    "auth_uri": os.environ.get('AUTH_URI'),
-    "token_uri": os.environ.get('TOKEN_URI'),
-    "auth_provider_x509_cert_url": os.environ.get('AUTH_PROVIDER_X509_CERT_URL'),
-    "client_x509_cert_url": os.environ.get('CLIENT_X509_CERT_URL')
+    "type": os.getenv('TYPE'),
+    "project_id": os.getenv('PROJECT_ID'),
+    "private_key_id": os.getenv('PRIVATE_KEY_ID'),
+    "private_key": os.getenv('PRIVATE_KEY'),
+    "client_email": os.getenv('CLIENT_EMAIL'),
+    "client_id": os.getenv('CLIENT_ID'),
+    "auth_uri": os.getenv('AUTH_URI'),
+    "token_uri": os.getenv('TOKEN_URI'),
+    "auth_provider_x509_cert_url": os.getenv('AUTH_PROVIDER_X509_CERT_URL'),
+    "client_x509_cert_url": os.getenv('CLIENT_X509_CERT_URL')
 }
 
 creds = ServiceAccountCredentials.from_json_keyfile_dict(keyfile_dict=keyvar, scopes=scope)
