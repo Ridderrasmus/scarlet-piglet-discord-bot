@@ -140,7 +140,6 @@ class OpEditModal(discord.ui.Modal, title = "Edit an op"):
 
 # Register the reserve sunday command 
 @bot.hybrid_command("reservesunday", with_app_command=True, description="Reserve a sunday")
-@app_commands.guilds()
 @commands.has_role("Mission Maker")
 async def reservesunday(ctx: commands.Context, opname: str = None, authorname: str = None):
     BookedOp.OPName = opname
@@ -150,7 +149,6 @@ async def reservesunday(ctx: commands.Context, opname: str = None, authorname: s
 
 # Register the edit op command
 @bot.hybrid_command("editsunday", with_app_command=True, description="Edit a booked op")
-@app_commands.guilds()
 @commands.has_role("Mission Maker")
 async def editsunday(ctx: commands.Context):
     view = discord.ui.View(timeout=180).add_item(OpEditSelect())
@@ -158,7 +156,6 @@ async def editsunday(ctx: commands.Context):
 
 # Register the create schedule message command
 @bot.hybrid_command("createschedule", with_app_command=True, description="Create op schedule in this channel")
-@app_commands.guilds()
 @commands.has_role("Mission Maker")
 async def createschedule(ctx: commands.Context):
     schedule_channel = await ctx._get_channel()
