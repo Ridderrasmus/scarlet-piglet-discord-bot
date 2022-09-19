@@ -70,18 +70,21 @@ def get_schedule_message_id():
         return []
 
 # Return schedule dates
+# Feel like this and below method could be combined but I can't be bothered right now
 def get_schedule_dates():
     next_sundays = get_next_n_sundays(int(date_amount_cell.value)+4)
     dates = sheet1.col_values(1)
     ops = sheet1.col_values(2)
     authors = sheet1.col_values(3)
+    new_ops = update_schedule_dates([dates, ops, authors])
 
-    return [dates, ops, authors]
+    return [new_ops]
 
 # Update the schedule
-def update_schedule_dates():
+def update_schedule_dates(old_ops = None):
     next_sundays = get_next_n_sundays(int(date_amount_cell.value))
-    old_ops = get_schedule_dates()
+    if(old_ops == None):
+        old_ops = get_schedule_dates()
     ops = []
 
     for i in range(1, 11):
@@ -98,6 +101,17 @@ def update_schedule_dates():
         sheet_range = 'A' + str(i+2) + ':C' + str(i+2)
         print(sheet_range)
         sheet1.batch_update([{'range' : sheet_range, 'values' : [ops[i]]}])
+        
+    dates = []
+    names = []
+    authors = []
+    for i in (len(ops) + 1):
+        dates.append(ops[i][0])
+        names.append(ops[i][1])
+        authors.append(ops[i][2])
+        
+    
+    return [dates, names, authors]
         
         
         
