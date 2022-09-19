@@ -4,9 +4,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import os
 from dotenv import load_dotenv
 
-scope = ['https://www.googleapis.com/auth/spreadsheets', "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive"]
-
-
+# Load environment variables
 load_dotenv()
 keyvar = {
     "type": os.getenv('TYPE'),
@@ -21,15 +19,17 @@ keyvar = {
     "client_x509_cert_url": os.getenv('CLIENT_X509_CERT_URL')
 }
 
+# Set up sheets credentials
+scope = ['https://www.googleapis.com/auth/spreadsheets', "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(keyfile_dict=keyvar, scopes=scope)
-
 client = gspread.authorize(creds)
 
+# Set up sheets
 sheets = client.open("Scarlet Pigs OP Schedule").worksheets()
-
 sheet1 = sheets[0]
 sheet2 = sheets[1]
 
+# Settings entered on the sheet
 date_amount_cell = sheet1.cell(2, 7)
 schedule_message_info_cell = sheet1.cell(3, 7)
         
@@ -49,6 +49,8 @@ def get_next_n_sundays(n = 5):
         next_n_sundays.append(sunday_after.strftime("%b %d (%y)"))
     return next_n_sundays
 
+# Save schedule message
+# TODO: Make local file using JSON to support multiple servers
 def set_schedule_message_id(message_id):
     if message_id != None:
         sheet1.update_cell(schedule_message_info_cell.row, schedule_message_info_cell.col, str(message_id))
@@ -56,6 +58,7 @@ def set_schedule_message_id(message_id):
         sheet1.update(schedule_message_info_cell.row, schedule_message_info_cell.col, [])
     return None
 
+# Load schedule message
 def get_schedule_message_id():
     msg_id = schedule_message_info_cell.value
     if (msg_id != None and msg_id != "[]" and msg_id != ""):
@@ -66,49 +69,38 @@ def get_schedule_message_id():
     else:
         return []
 
-def check_schedule_dates():
+# Return schedule dates
+def get_schedule_dates():
     next_sundays = get_next_n_sundays(int(date_amount_cell.value)+4)
     dates = sheet1.col_values(1)
     ops = sheet1.col_values(2)
     authors = sheet1.col_values(3)
-    for i in range(0, int(date_amount_cell.value)+1):
-        if len(dates) < (int(date_amount_cell.value)+1):
-            dates.append("")
-        if len(ops) < (int(date_amount_cell.value)+1):
-            ops.append("")
-        if len(authors) < (int(date_amount_cell.value)+1):
-            authors.append("")
-            
-    
-    
-    if next_sundays[0] in [dates[2], dates[3], dates[4], dates[5], dates[6], dates[7], dates[8], dates[9]]:
-        sheet2.insert_row([dates[1], ops[1], authors[1]], 2)
-        
-        
-        for i in range(1, int(date_amount_cell.value)+1):
-            if i == int(date_amount_cell.value) or dates[i] == None or dates[i] == "":
-                sheet1.update_cell(i+1, 1, next_sundays[i-1])
-                print("INFO: Date just updated.")
-            else:
-                sheet1.update_cell(i+1, 1, dates[i+1])
-                sheet1.update_cell(i+1, 2, ops[i+1])
-                sheet1.update_cell(i+1, 3, authors[i+1])
-                print("INFO: Date just got moved.")
-    
-    elif len(dates) != int(date_amount_cell.value)+1:
-        for i in range(1, int(date_amount_cell.value)+1):
-            if dates[i] == None or dates[i] == "":
-                sheet1.update_cell(i+1, 1, next_sundays[i-1])
-                print("INFO: Date just updated.")
-    
-    else:
-        for i in range(1, int(date_amount_cell.value)+1):
-            if dates[i] == None or dates[i] == "":
-                sheet1.update_cell(i+1, 1, next_sundays[i-1])
-                print("INFO: Date just updated.")
-    
 
     return [dates, ops, authors]
+
+# Update the schedule
+def update_schedule_dates():
+    next_sundays = get_next_n_sundays(int(date_amount_cell.value))
+    old_ops = get_schedule_dates()
+    ops = []
+
+    for i in range(1, 11):
+        name = ''
+        author = ''
+        if(next_sundays[i-1] in old_ops[0]):
+            index = old_ops[0].index(next_sundays[i-1])
+            name = old_ops[1][index]
+            author = old_ops[2][index]
+        ops.append([next_sundays[i-1], name, author])
+    
+    for i in range(0,10):
+        print(ops[i])
+        sheet_range = 'A' + str(i+2) + ':C' + str(i+2)
+        print(sheet_range)
+        sheet1.batch_update([{'range' : sheet_range, 'values' : [ops[i]]}])
+        
+        
+        
         
 # Updates an op entry in the schedule
 # Use
@@ -124,7 +116,8 @@ def update_op(datex, opname = None, opauthor = None):
             if opauthor != None:
                 sheet1.update_cell(i+1, 3, opauthor)
     return None
-        
+
+# Get data on specific op
 def get_op_data(date = None, op = None, author = None):
     dateinfo = sheet1.col_values(1)
     opinfo = sheet1.col_values(2)
@@ -147,7 +140,7 @@ def get_op_data(date = None, op = None, author = None):
 
 # Returns a list of all op entries in the sheet
 def get_full_schedule():
-    full_schedule = check_schedule_dates()
+    full_schedule = get_schedule_dates()
     dates = []
     for i in range(1, len(full_schedule[0])):
         dates.append([full_schedule[0][i], full_schedule[1][i], full_schedule[2][i]])
@@ -176,5 +169,6 @@ def get_booked_dates():
 
 
 
-check_schedule_dates()
+#check_schedule_dates()
+update_schedule_dates()
 print("Sheets updated and setup")
