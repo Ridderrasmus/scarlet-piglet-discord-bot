@@ -176,7 +176,7 @@ async def editsunday(interaction: discord.Interaction):
 
 # Register the create schedule message command
 @tree.command(name="createschedule", description="Create op schedule in this channel")
-@app_commands.checks.has_role("Mission Maker")
+@app_commands.checks.has_role("Unit Organizer")
 async def createschedule(interaction: discord.Interaction):
     guild_id = interaction.guild_id
     channel = interaction.channel
