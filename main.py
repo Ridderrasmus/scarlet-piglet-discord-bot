@@ -4,6 +4,7 @@ import schedule
 from discord.ext import commands, tasks
 from discord import ui, app_commands
 import os
+import xlsxwriter
 
 
 #######################
@@ -53,28 +54,29 @@ class BookedOp():
     OPDate = ""
 
 # Define the bot class
-class SPiglet(commands.Bot):
+class SPiglet(discord.Client):
     def __init__(self):
         global schedule_msg
         global schedule_channel
         schedule_msg = None
         schedule_channel = None
-        intents = discord.Intents.default()
-        intents.message_content = True
-        super().__init__(command_prefix="!", intents=intents)
+        super().__init__(intents=discord.Intents.default())
+        self.synced = False
         
-    async def setup_hook(self):
-        await self.tree.sync()
-        print("Synced slash commands for {self.user}.")
     
     async def on_ready(self):
+        await self.wait_until_ready()
+        if not self.synced:
+            await tree.sync()
+            self.synced = True
         await schedule_loop.start()
     
     async def on_command_error(self, ctx, error):
         await ctx.reply(error, ephemeral = True)
 
-# Define the bot as a variable (easier reference)
-bot = SPiglet(); 
+# Define the bot and command tree as variables (easier reference)
+bot = SPiglet()
+tree = app_commands.CommandTree(bot)
 
 
 
@@ -133,48 +135,134 @@ class OpEditModal(discord.ui.Modal, title = "Edit an op"):
 
 
 
+##################################
+### Command conditions section ###
+##################################
 
-########################
-### Commands section ###
-########################
+def has_reactions():
+    def predicate(ctx):
+        return (len(ctx.message.reactions) > 0)
+    return commands.check(predicate)
+
+
+
+###############################
+### Hybrid commands section ###
+###############################
+
+# Register the send message
+@tree.command(name="send", description="Send a message")
+@app_commands.checks.has_role("ServerOps")
+async def send(interaction: discord.Interaction, message: str = None):
+    channel = await interaction.channel._get_channel()
+    await interaction.response.send_message(content="Message sent.", ephemeral=True)
+    await channel.send(message)
 
 # Register the reserve sunday command 
-@bot.hybrid_command("reservesunday", with_app_command=True, description="Reserve a sunday")
-@commands.has_role("Mission Maker")
-async def reservesunday(ctx: commands.Context, opname: str = None, authorname: str = None):
+@tree.command(name="reservesunday", description="Reserve a sunday")
+@app_commands.checks.has_role("Mission Maker")
+async def reservesunday(interaction: discord.Interaction, opname: str = None, authorname: str = None):
     BookedOp.OPName = opname
     BookedOp.OPAuthor = authorname
     view = discord.ui.View(timeout=180).add_item(DateSelect())
-    await ctx.send("Reserved an op. Now pick the date: ", view=view)
+    await interaction.response.send_message("Reserved an op. Now pick the date: ", view=view)
 
 # Register the edit op command
-@bot.hybrid_command("editsunday", with_app_command=True, description="Edit a booked op")
-@commands.has_role("Mission Maker")
-async def editsunday(ctx: commands.Context):
+@tree.command(name="editsunday", description="Edit a booked op")
+@app_commands.checks.has_role("Mission Maker")
+async def editsunday(interaction: discord.Interaction):
     view = discord.ui.View(timeout=180).add_item(OpEditSelect())
-    await ctx.send("Which op do you want to edit? ", view=view)
+    await interaction.response.send_message("Which op do you want to edit? ", view=view)
 
 # Register the create schedule message command
-@bot.hybrid_command("createschedule", with_app_command=True, description="Create op schedule in this channel")
-@commands.has_role("Mission Maker")
-async def createschedule(ctx: commands.Context):
-    schedule_channel = await ctx._get_channel()
-    schedule_msg = schedule.get_schedule_message_id()
-    if(schedule_msg != None and schedule_msg != []):
-        schedule_msg = schedule_msg[1]
-        try: 
-            schedule_msg = await schedule_channel.fetch_message(schedule_msg)
-            await schedule_msg.delete()
+@tree.command(name="createschedule", description="Create op schedule in this channel")
+@app_commands.checks.has_role("Mission Maker")
+async def createschedule(interaction: discord.Interaction):
+    guild_id = interaction.guild_id
+    channel = interaction.channel
+    schedule_messages = schedule.get_schedule_messages()
+    guild_ids = [server['guild_id'] for server in schedule_messages['servers']]
+    await interaction.response.send_message("Op schedule being created...", ephemeral=True)
+    
+    if (guild_id in guild_ids):
+        index = guild_ids.index(guild_id)
+        old_channel = bot.get_channel(schedule_messages['servers'][index]['channel_id'])
+        try:
+            old_msg = await old_channel.fetch_message(schedule_messages['servers'][index]['message_id'])
+            await old_msg.delete()
         except:
-            schedule.set_schedule_message_id([])
+            print("Couldn't delete old message")
         
+    new_msg = await channel.send(content=format_schedule())
+    
+    schedule.set_schedule_message_id(guild_id, channel.id, new_msg.id)
+    await interaction.edit_original_response(content="Op schedule created.")
+    
+    
+    
+
+
+################################
+### Context commands section ###
+################################
+
+# Register the get signups context menu command
+@tree.context_menu(name="Get signups")
+@app_commands.checks.has_role("Mission Maker")
+async def get_signups(interaction: discord.Interaction, message: discord.Message):
+    await interaction.response.send_message(content="Blegh", ephemeral=True)
+    reactions = message.reactions
+    users = []
+    for i in range(0, len(reactions)):
+        reacters = [user.display_name async for user in reactions[i].users()]
+        users = users + reacters
+    users = list(set(users))
+    
+    first_row = ["Name"]
+    for i in reactions:
+        if(i.is_custom_emoji()):
+            emoji = i.emoji.name
+        else:
+            emoji = i.emoji
+        first_row.append(f'{emoji}')
         
-    schedule_msg = await schedule_channel.send(content=format_schedule())
-    schedule.set_schedule_message_id([schedule_channel.id, schedule_msg.id])
-    await schedule_loop()
-    await ctx.send("Op schedule created.", ephemeral=True)
-   
-   
+    player_rows = []
+    for i in users:
+        player_row = [i]
+        for j in reactions:
+            if(i in [user.display_name async for user in j.users()]):
+                player_row.append("X")
+            else:
+                player_row.append("")
+        player_rows.append(player_row)
+
+    workbook = xlsxwriter.Workbook('reactions.xlsx')
+    sheet = workbook.add_worksheet()
+    sheet.write_row(0, 0, first_row)
+    for i in player_rows:
+        sheet.write_row(player_rows.index(i)+1, 0, i)
+    workbook.close()
+
+    await interaction.edit_original_response(content="Signups exported to CSV.", attachments=[discord.File('reactions.xlsx')])
+    os.remove('reactions.xlsx')
+
+
+#####################
+### Error Handler ###
+#####################
+
+@tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.CommandOnCooldown):
+        await interaction.response.send_message(error, ephemeral=True)
+    elif isinstance(error, app_commands.MissingRole):
+        await interaction.response.send_message(error, ephemeral=True)
+    else:
+        print("An error occured!")
+        print(error)
+        raise error
+
+
 ##################
 ### Task Loops ###
 ##################
@@ -188,19 +276,21 @@ async def schedule_loop():
     if not bot.is_closed():
         
         
-        schedule_msg = schedule.get_schedule_message_id()
+        schedule_messages = schedule.get_schedule_messages()
         
-        if len(schedule_msg) == 2:
-            schedule_channel = bot.get_channel(int(schedule_msg[0]))
-            schedule_msg = schedule_msg[1]
-            if (type(schedule_msg == "int")):
-                schedule_msg = await schedule_channel.fetch_message(schedule_msg)
-            if schedule_msg != None and schedule_msg != []:
-                try:
-                    await schedule_msg.edit(content=format_schedule())
-                    
-                except Exception as e:
-                    print(str(e))
+        for x in schedule_messages['servers']:
+            guild_id = x['guild_id']
+            guild = await bot.fetch_guild(guild_id)
+            channel_id = x['channel_id']
+            channel = bot.get_channel(channel_id)
+            message_id = x['message_id']
+            
+            try:
+                print(f'Updating schedule for {guild.name} in channel {channel.name}')
+                msg = await channel.fetch_message(message_id)
+                await msg.edit(content=format_schedule())
+            except:
+                print("Couldn't update schedule message")
             
 
     

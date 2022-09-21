@@ -1,8 +1,12 @@
-import gspread
-import datetime
+from genericpath import isfile
+from dotenv import load_dotenv
 from oauth2client.service_account import ServiceAccountCredentials
 import os
-from dotenv import load_dotenv
+import gspread
+import datetime
+import json
+
+
 
 # Load environment variables
 load_dotenv()
@@ -49,69 +53,79 @@ def get_next_n_sundays(n = 5):
         next_n_sundays.append(sunday_after.strftime("%b %d (%y)"))
     return next_n_sundays
 
+def get_schedule_messages():
+    if os.path.isfile("schedule_messages.json"):
+        with open("schedule_messages.json", "r") as f:
+            messages = json.load(f)
+            
+        return messages
+    else:
+        return { 'servers': []}
+    
 # Save schedule message
 # TODO: Make local file using JSON to support multiple servers
-def set_schedule_message_id(message_id):
-    if message_id != None:
-        sheet1.update_cell(schedule_message_info_cell.row, schedule_message_info_cell.col, str(message_id))
+def set_schedule_message_id(guild_id: int, channel_id: int, message_id: int):
+    serverdata = get_schedule_messages()
+    guild_ids = [server['guild_id'] for server in serverdata['servers']]
+    
+    if (guild_id in guild_ids):
+        index = guild_ids.index(guild_id)
+        serverdata['servers'][index]['channel_id'] = channel_id
+        serverdata['servers'][index]['message_id'] = message_id
     else:
-        sheet1.update(schedule_message_info_cell.row, schedule_message_info_cell.col, [])
-    return None
-
-# Load schedule message
-def get_schedule_message_id():
-    msg_id = schedule_message_info_cell.value
-    if (msg_id != None and msg_id != "[]" and msg_id != ""):
-        msg_id = msg_id.strip("[]")
-        msg_id = msg_id.split(",")
-        msg_id = [msg_id[0], msg_id[1]]
-        return msg_id
-    else:
-        return []
+        serverdata['servers'].append({'guild_id': guild_id, 'channel_id': channel_id, 'message_id': message_id})
+        
+    with open("schedule_messages.json", "w") as f:
+        json.dump(serverdata, f)
 
 # Return schedule dates
-# Feel like this and below method could be combined but I can't be bothered right now
 def get_schedule_dates():
     next_sundays = get_next_n_sundays(int(date_amount_cell.value)+4)
     dates = sheet1.col_values(1)
-    ops = sheet1.col_values(2)
+    names = sheet1.col_values(2)
     authors = sheet1.col_values(3)
-    new_ops = update_schedule_dates([dates, ops, authors])
-
-    return [new_ops]
-
-# Update the schedule
-def update_schedule_dates(old_ops = None):
+    old_ops = [dates, names, authors]
+    
     next_sundays = get_next_n_sundays(int(date_amount_cell.value))
-    if(old_ops == None):
-        old_ops = get_schedule_dates()
     ops = []
-
+    
+    previous_sundays = [x for x in old_ops[0] if x not in next_sundays]
+    for old_sunday in previous_sundays:
+        if (old_sunday != "Date"):
+            index = old_ops[0].index(old_sunday)
+            old_name = old_ops[1][index]
+            old_author = old_ops[2][index]
+            sheet2.append_row(values=[old_sunday, old_name, old_author])
+        
+    
     for i in range(1, 11):
         name = ''
         author = ''
         if(next_sundays[i-1] in old_ops[0]):
             index = old_ops[0].index(next_sundays[i-1])
-            name = old_ops[1][index]
-            author = old_ops[2][index]
+            if index >= 0 and index < len(old_ops[1]):
+                name = old_ops[1][index]
+            if index >= 0 and index < len(old_ops[2]):
+                author = old_ops[2][index]
         ops.append([next_sundays[i-1], name, author])
     
+    
     for i in range(0,10):
-        print(ops[i])
         sheet_range = 'A' + str(i+2) + ':C' + str(i+2)
-        print(sheet_range)
         sheet1.batch_update([{'range' : sheet_range, 'values' : [ops[i]]}])
         
     dates = []
     names = []
     authors = []
-    for i in (len(ops) + 1):
+    for i in range(0, len(ops)):
+        
         dates.append(ops[i][0])
         names.append(ops[i][1])
         authors.append(ops[i][2])
-        
-    
+
     return [dates, names, authors]
+
+
         
         
         
@@ -156,7 +170,7 @@ def get_op_data(date = None, op = None, author = None):
 def get_full_schedule():
     full_schedule = get_schedule_dates()
     dates = []
-    for i in range(1, len(full_schedule[0])):
+    for i in range(0, len(full_schedule[0])):
         dates.append([full_schedule[0][i], full_schedule[1][i], full_schedule[2][i]])
     return dates
 
@@ -183,6 +197,6 @@ def get_booked_dates():
 
 
 
-#check_schedule_dates()
-update_schedule_dates()
+
+get_schedule_dates()
 print("Sheets updated and setup")
