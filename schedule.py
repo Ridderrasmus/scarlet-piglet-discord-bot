@@ -177,12 +177,10 @@ def get_full_schedule():
 # Get the dates without an op
 def get_free_dates():
     full_schedule = get_full_schedule()
-    print(full_schedule)
     free_dates = []
     for i in range(0, len(full_schedule)):
         if full_schedule[i][1] == "" or full_schedule[i][1] == None:
             free_dates.append([full_schedule[i][0], full_schedule[i][1], full_schedule[i][2]])
-    print(free_dates)
     return free_dates
 
 # Get the dates with an op

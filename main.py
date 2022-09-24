@@ -98,7 +98,7 @@ class DateSelect(discord.ui.Select):
         embed = discord.Embed(title = "Reserved a Sunday", description = f"Op named {BookedOp.OPName} made by {BookedOp.OPAuthor} is booked for {self.values[0]}.", timestamp = datetime.datetime.utcnow(), color = discord.Colour.blue())
         embed.set_author(name = interaction.user, icon_url = interaction.user.display_avatar)
         await schedule_loop()
-        await interaction.response.edit_message(content="Date picked.", view=None, embed=embed)
+        await interaction.response.send_message(content="Date picked.", embed = embed)
 
 # Define the edit op Select
 class OpEditSelect(discord.ui.Select):
@@ -131,7 +131,8 @@ class OpEditModal(discord.ui.Modal, title = "Edit an op"):
         BookedOp.OPAuthor = self.author.value
         schedule.update_op(BookedOp.OPDate, BookedOp.OPName, BookedOp.OPAuthor)
         await schedule_loop()
-        await interaction.response.edit_message(content=f'{self.opname.value} edited. Author: {self.author.value}', view=None)
+        embed = discord.Embed(title = "Edited a Sunday", description = f"Op named {self.opname.value} made by {self.author.value} is booked for {BookedOp.OPDate}.", timestamp = datetime.datetime.utcnow(), color = discord.Colour.blue())
+        await interaction.response.send_message(content="", embed=embed)
 
 
 
@@ -161,18 +162,22 @@ async def send(interaction: discord.Interaction, message: str = None):
 # Register the reserve sunday command 
 @tree.command(name="reservesunday", description="Reserve a sunday")
 @app_commands.checks.has_role("Mission Maker")
+#@app_commands.Argument(name="opname", description="The name of the op", type=discord.AppCommandOptionType.string, required=True)
+#@app_commands.Argument(name="author", description="The author of the op", type=discord.AppCommandOptionType.string, required=True)
 async def reservesunday(interaction: discord.Interaction, opname: str = None, authorname: str = None):
+    await interaction.response.send_message(content="Reserving an op.", ephemeral=True)
     BookedOp.OPName = opname
     BookedOp.OPAuthor = authorname
     view = discord.ui.View(timeout=180).add_item(DateSelect())
-    await interaction.response.send_message("Reserved an op. Now pick the date: ", view=view)
+    await interaction.edit_original_response(content="Reserved an op. Now pick the date: ", view=view)
 
 # Register the edit op command
 @tree.command(name="editsunday", description="Edit a booked op")
 @app_commands.checks.has_role("Mission Maker")
 async def editsunday(interaction: discord.Interaction):
+    await interaction.response.send_message("Which op do you want to edit? ", ephemeral=True)
     view = discord.ui.View(timeout=180).add_item(OpEditSelect())
-    await interaction.response.send_message("Which op do you want to edit? ", view=view)
+    await interaction.edit_original_response(content="Which op do you want to edit? ", view=view)
 
 # Register the create schedule message command
 @tree.command(name="createschedule", description="Create op schedule in this channel")
@@ -209,45 +214,67 @@ async def createschedule(interaction: discord.Interaction):
 # Register the get signups context menu command
 @tree.context_menu(name="Get signups")
 @app_commands.checks.has_role("Mission Maker")
+@app_commands.checks.cooldown(rate=1, per=120)
 async def get_signups(interaction: discord.Interaction, message: discord.Message):
     await interaction.response.send_message(content="Signup sheet being created. This may take a while but in the meantime do not dismiss this message.", ephemeral=True)
-    reactions = message.reactions
-    if(len(reactions) == 0):
+    
+    #Get message reactions and return out of the function if there are none
+    msg_reactions = message.reactions
+    if(len(msg_reactions) == 0):
         await interaction.edit_original_response(content="Message has no reactions.")
         return None
-    users = []
-    for i in range(0, len(reactions)):
-        print("Test 2")
-        reacters = [user.display_name async for user in reactions[i].users()]
-        users = users + reacters
-    users = list(set(users))
     
-    first_row = ["Name"]
-    for i in reactions:
-        if(i.is_custom_emoji()):
-            emoji = i.emoji.name
+    #For each reaction create dict with reaction name and list of users
+    reactions = []
+    for x in msg_reactions:
+        if x.is_custom_emoji():
+            name = x.emoji.name
         else:
-            emoji = i.emoji
-        first_row.append(f'{emoji}')
+            name = x.emoji
         
-    player_rows = []
+        reaction = {
+            'emoji': x.emoji,
+            'emoji_name': name,
+            'reactors' : [user.display_name async for user in x.users()]
+        }
+        reactions.append(reaction)
+    
+    #Get all the users that reacted to the message
+    all_reactors = []
+    for x in reactions:
+        reacters = [user for user in x['reactors']]
+        all_reactors = all_reactors + reacters
+    all_reactors = list(set(all_reactors))
+    
+    #Create header row
+    header_row = ["Name"]
+    for x in reactions:
+        name = x['emoji_name']
+        header_row.append(f'{name}')
+        
     #This for loop is the slowest part of the code. Need to speed it up. I imagine it's got to do with how we get each player for each reaction.
     #Should probably get everything we need at the beginning of the command to make it easier and hopefully quicker.
-    for i in users:
-        player_row = [i]
-        for j in reactions:
-            if(i in [user.display_name async for user in j.users()]):
+    
+    #Create rows for each player with their reactions
+    player_rows = []
+    for reactor in all_reactors:
+        player_row = [reactor]
+        for x in reactions:
+            if(reactor in [user for user in x['reactors']]):
                 player_row.append("X")
             else:
                 player_row.append("")
         player_rows.append(player_row)
 
+    #Create excel file and write information into it
     workbook = xlsxwriter.Workbook('reactions.xlsx')
     sheet = workbook.add_worksheet()
-    sheet.write_row(0, 0, first_row)
+    sheet.write_row(0, 0, header_row)
     for i in player_rows:
         sheet.write_row(player_rows.index(i)+1, 0, i)
     workbook.close()
+    
+    #Send the excel file to the user and delete the local file afterwards
     await interaction.edit_original_response(content="Signups exported to CSV.", attachments=[discord.File('reactions.xlsx')])
     os.remove('reactions.xlsx')
 
@@ -262,6 +289,8 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
         await interaction.response.send_message(error, ephemeral=True)
     elif isinstance(error, app_commands.MissingRole):
         await interaction.response.send_message(error, ephemeral=True)
+    elif isinstance(error, app_commands.CommandOnCooldown):
+        await interaction.response.send_message(content=f'This command is on cooldown. Try again in {error.retry_after} seconds.', ephemeral=True)
     else:
         print("An error occured!")
         print(error)
