@@ -210,10 +210,14 @@ async def createschedule(interaction: discord.Interaction):
 @tree.context_menu(name="Get signups")
 @app_commands.checks.has_role("Mission Maker")
 async def get_signups(interaction: discord.Interaction, message: discord.Message):
-    await interaction.response.send_message(content="Blegh", ephemeral=True)
+    await interaction.response.send_message(content="Signup sheet being created. This may take a while but in the meantime do not dismiss this message.", ephemeral=True)
     reactions = message.reactions
+    if(len(reactions) == 0):
+        await interaction.edit_original_response(content="Message has no reactions.")
+        return None
     users = []
     for i in range(0, len(reactions)):
+        print("Test 2")
         reacters = [user.display_name async for user in reactions[i].users()]
         users = users + reacters
     users = list(set(users))
@@ -227,6 +231,8 @@ async def get_signups(interaction: discord.Interaction, message: discord.Message
         first_row.append(f'{emoji}')
         
     player_rows = []
+    #This for loop is the slowest part of the code. Need to speed it up. I imagine it's got to do with how we get each player for each reaction.
+    #Should probably get everything we need at the beginning of the command to make it easier and hopefully quicker.
     for i in users:
         player_row = [i]
         for j in reactions:
@@ -242,7 +248,6 @@ async def get_signups(interaction: discord.Interaction, message: discord.Message
     for i in player_rows:
         sheet.write_row(player_rows.index(i)+1, 0, i)
     workbook.close()
-
     await interaction.edit_original_response(content="Signups exported to CSV.", attachments=[discord.File('reactions.xlsx')])
     os.remove('reactions.xlsx')
 
