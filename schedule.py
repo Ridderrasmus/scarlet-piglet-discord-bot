@@ -54,29 +54,26 @@ def get_next_n_sundays(n = 5):
     return next_n_sundays
 
 def get_schedule_messages():
-    if os.path.isfile("schedule_messages.json"):
-        with open("schedule_messages.json", "r") as f:
-            messages = json.load(f)
-            
-        return messages
+    schedule_message_info = schedule_message_info_cell.value
+    if schedule_message_info == "" or schedule_message_info == None: 
+        return { "servers": []}
     else:
-        return { 'servers': []}
+        return json.loads(schedule_message_info)
     
 # Save schedule message
 # TODO: Make local file using JSON to support multiple servers
 def set_schedule_message_id(guild_id: int, channel_id: int, message_id: int):
     serverdata = get_schedule_messages()
-    guild_ids = [server['guild_id'] for server in serverdata['servers']]
+    guild_ids = [server["guild_id"] for server in serverdata["servers"]]
     
     if (guild_id in guild_ids):
         index = guild_ids.index(guild_id)
-        serverdata['servers'][index]['channel_id'] = channel_id
-        serverdata['servers'][index]['message_id'] = message_id
+        serverdata["servers"][index]["channel_id"] = channel_id
+        serverdata["servers"][index]["message_id"] = message_id
     else:
-        serverdata['servers'].append({'guild_id': guild_id, 'channel_id': channel_id, 'message_id': message_id})
+        serverdata["servers"].append({"guild_id": guild_id, "channel_id": channel_id, "message_id": message_id})
         
-    with open("schedule_messages.json", "w") as f:
-        json.dump(serverdata, f)
+    sheet1.update_cell(3, 7, json.dumps(serverdata))
 
 # Return schedule dates
 def get_schedule_dates():
