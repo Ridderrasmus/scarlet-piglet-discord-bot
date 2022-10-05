@@ -98,7 +98,7 @@ class DateSelect(discord.ui.Select):
         embed = discord.Embed(title = "Reserved a Sunday", description = f"Op named {BookedOp.OPName} made by {BookedOp.OPAuthor} is booked for {self.values[0]}.", timestamp = datetime.datetime.utcnow(), color = discord.Colour.blue())
         embed.set_author(name = interaction.user, icon_url = interaction.user.display_avatar)
         await schedule_loop()
-        await interaction.response.send_message(content="Date picked.", embed = embed)
+        await interaction.edit_original_response(content="Date picked.", embed = embed)
 
 # Define the edit op Select
 class OpEditSelect(discord.ui.Select):
@@ -127,12 +127,13 @@ class OpEditModal(discord.ui.Modal, title = "Edit an op"):
     author = ui.TextInput(label='Author', min_length=1, max_length=15, default=BookedOp.OPAuthor, placeholder=BookedOp.OPAuthor)
 
     async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.send_message(content="Editing op...")
         BookedOp.OPName = self.opname.value
         BookedOp.OPAuthor = self.author.value
         schedule.update_op(BookedOp.OPDate, BookedOp.OPName, BookedOp.OPAuthor)
         await schedule_loop()
         embed = discord.Embed(title = "Edited a Sunday", description = f"Op named {self.opname.value} made by {self.author.value} is booked for {BookedOp.OPDate}.", timestamp = datetime.datetime.utcnow(), color = discord.Colour.blue())
-        await interaction.response.send_message(content="", embed=embed)
+        await interaction.edit_original_response(content="Op edited", embed = embed)
 
 
 
