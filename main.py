@@ -94,6 +94,7 @@ class DateSelect(discord.ui.Select):
             options.append(discord.SelectOption(label = string, value = string))
         super().__init__(placeholder = "Choose the date", min_values=1, max_values=1, options = options)
     async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         schedule.update_op(self.values[0], BookedOp.OPName, BookedOp.OPAuthor)
         embed = discord.Embed(title = "Reserved a Sunday", description = f"Op named {BookedOp.OPName} made by {BookedOp.OPAuthor} is booked for {self.values[0]}.", timestamp = datetime.datetime.utcnow(), color = discord.Colour.blue())
         embed.set_author(name = interaction.user, icon_url = interaction.user.display_avatar)
@@ -103,19 +104,19 @@ class DateSelect(discord.ui.Select):
 # Define the edit op Select
 class OpEditSelect(discord.ui.Select):
     def __init__(self):
-        next_sundays = schedule.get_booked_dates()
+        next_booked_ops = schedule.get_booked_dates()
         options = []
-        for i in range(0, len(next_sundays)):
-            opname = next_sundays[i][1]
-            opdate = next_sundays[i][0]
+        for i in range(0, len(next_booked_ops)):
+            opname = next_booked_ops[i][1]
+            opdate = next_booked_ops[i][0]
             options.append(discord.SelectOption(label = opname, value = opdate))
         super().__init__(placeholder = "Choose the op", min_values=1, max_values=1, options = options)
     async def callback(self, interaction: discord.Interaction):
         date = schedule.get_op_data(date=self.values[0])
+        await interaction.response.send_modal(OpEditModal(date[1], date[2]))
         BookedOp.OPDate = date[0]
         BookedOp.OPName = date[1]
         BookedOp.OPAuthor = date[2]
-        await interaction.response.send_modal(OpEditModal())
         
 ######################
 ### Modals (Forms) ###
@@ -123,17 +124,36 @@ class OpEditSelect(discord.ui.Select):
 
 # Define the edit op modal
 class OpEditModal(discord.ui.Modal, title = "Edit an op"):
-    opname = ui.TextInput(label='OP Name', min_length=1, max_length=31, default=BookedOp.OPName, placeholder=BookedOp.OPName)
-    author = ui.TextInput(label='Author', min_length=1, max_length=15, default=BookedOp.OPAuthor, placeholder=BookedOp.OPAuthor)
+    opname = ui.TextInput(label='OP Name', min_length=1, max_length=31)
+    author = ui.TextInput(label='Author', min_length=1, max_length=15)
+    
+    def __init__(self, opnamevalue, authorvalue):
+        self.opname.default = opnamevalue
+        self.author.default = authorvalue
+        super().__init__()
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.send_message(content="Editing op...")
+        await interaction.response.defer()
         BookedOp.OPName = self.opname.value
         BookedOp.OPAuthor = self.author.value
         schedule.update_op(BookedOp.OPDate, BookedOp.OPName, BookedOp.OPAuthor)
         await schedule_loop()
         embed = discord.Embed(title = "Edited a Sunday", description = f"Op named {self.opname.value} made by {self.author.value} is booked for {BookedOp.OPDate}.", timestamp = datetime.datetime.utcnow(), color = discord.Colour.blue())
-        await interaction.edit_original_response(content="Op edited", embed = embed)
+        await interaction.followup.send(content="Op edited", embed = embed)
+        
+# Define the edit bot message modal with the given variable when called (the message to edit)
+class BotMessageEditModal(discord.ui.Modal, title = "Edit bot message"):
+    edit_message_textfield = ui.TextInput(style=discord.TextStyle.paragraph, label='Message', min_length=1, max_length=2000)
+    # Get the message to edit
+    def __init__(self, message):
+        self.message = message
+        self.edit_message_textfield.default = message.content
+        super().__init__()    
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await self.message.edit(content = self.edit_message_textfield.value)
+        await interaction.response.send_message("Message edited", ephemeral = True)
+        
 
 
 
@@ -141,12 +161,20 @@ class OpEditModal(discord.ui.Modal, title = "Edit an op"):
 ### Command conditions section ###
 ##################################
 
-def has_reactions():
-    def predicate(ctx):
+def has_reactions() -> bool:
+    def predicate(ctx: discord.Interaction) -> bool:
         return (len(ctx.message.reactions) > 0)
-    return commands.check(predicate)
+    return app_commands.check(predicate)
 
+def is_author() -> bool:
+    def predicate(ctx: discord.Interaction) -> bool:
+        return (ctx.message.author.id == ctx.user.id)
+    return app_commands.check(predicate)
 
+def bot_is_author() -> bool:
+    def predicate(ctx: discord.Interaction) -> bool:
+        return (ctx.message.author.id == 1012077296515039324)
+    return app_commands.check(predicate)
 
 ###############################
 ### Hybrid commands section ###
@@ -154,31 +182,36 @@ def has_reactions():
 
 # Register the send message
 @tree.command(name="send", description="Send a message")
+#@app_commands.describe(send="Message to send")
 @app_commands.checks.has_role("ServerOps")
-async def send(interaction: discord.Interaction, message: str = None):
+async def send(interaction: discord.Interaction, message: str):
     channel = await interaction.channel._get_channel()
     await interaction.response.send_message(content="Message sent.", ephemeral=True)
     await channel.send(message)
 
 # Register the reserve sunday command 
 @tree.command(name="reservesunday", description="Reserve a sunday")
+#@app_commands.describe(opname="Name of the operation")
+#@app_commands.describe(authorname="Your discord name")
 @app_commands.checks.has_role("Mission Maker")
-#@app_commands.Argument(name="opname", description="The name of the op", type=discord.AppCommandOptionType.string, required=True)
-#@app_commands.Argument(name="author", description="The author of the op", type=discord.AppCommandOptionType.string, required=True)
-async def reservesunday(interaction: discord.Interaction, opname: str = None, authorname: str = None):
-    await interaction.response.send_message(content="Reserving an op.", ephemeral=True)
+async def reservesunday(
+        interaction: discord.Interaction, 
+        opname: str, 
+        authorname: str
+    ):
+    await interaction.response.defer(ephemeral=True)
     BookedOp.OPName = opname
     BookedOp.OPAuthor = authorname
     view = discord.ui.View(timeout=180).add_item(DateSelect())
-    await interaction.edit_original_response(content="Reserved an op. Now pick the date: ", view=view)
+    await interaction.followup.send(content="Reserved an op. Now pick the date: ", view=view)
 
 # Register the edit op command
 @tree.command(name="editsunday", description="Edit a booked op")
 @app_commands.checks.has_role("Mission Maker")
 async def editsunday(interaction: discord.Interaction):
-    await interaction.response.send_message("Which op do you want to edit? ", ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
     view = discord.ui.View(timeout=180).add_item(OpEditSelect())
-    await interaction.edit_original_response(content="Which op do you want to edit? ", view=view)
+    await interaction.followup.send(content="Which op do you want to edit? ", view=view)
 
 # Register the create schedule message command
 @tree.command(name="createschedule", description="Create op schedule in this channel")
@@ -188,7 +221,7 @@ async def createschedule(interaction: discord.Interaction):
     channel = interaction.channel
     schedule_messages = schedule.get_schedule_messages()
     guild_ids = [server['guild_id'] for server in schedule_messages['servers']]
-    await interaction.response.send_message("Op schedule being created...", ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
     
     if (guild_id in guild_ids):
         index = guild_ids.index(guild_id)
@@ -202,7 +235,7 @@ async def createschedule(interaction: discord.Interaction):
     new_msg = await channel.send(content=format_schedule())
     
     schedule.set_schedule_message_id(guild_id, channel.id, new_msg.id)
-    await interaction.edit_original_response(content="Op schedule created.")
+    await interaction.followup.send(content="Op schedule created.")
     
     
     
@@ -213,16 +246,18 @@ async def createschedule(interaction: discord.Interaction):
 ################################
 
 # Register the get signups context menu command
+# Get reactions from a message and returns them as a nice excel sheet
 @tree.context_menu(name="Get signups")
 @app_commands.checks.has_role("Mission Maker")
 @app_commands.checks.cooldown(rate=1, per=120)
+@has_reactions()
 async def get_signups(interaction: discord.Interaction, message: discord.Message):
-    await interaction.response.send_message(content="Signup sheet being created. This may take a while but in the meantime do not dismiss this message.", ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
     
     #Get message reactions and return out of the function if there are none
     msg_reactions = message.reactions
     if(len(msg_reactions) == 0):
-        await interaction.edit_original_response(content="Message has no reactions.")
+        await interaction.followup.send(content="Message has no reactions.")
         return None
     
     #For each reaction create dict with reaction name and list of users
@@ -276,8 +311,34 @@ async def get_signups(interaction: discord.Interaction, message: discord.Message
     workbook.close()
     
     #Send the excel file to the user and delete the local file afterwards
-    await interaction.edit_original_response(content="Signups exported to CSV.", attachments=[discord.File('reactions.xlsx')])
+    await interaction.followup.send(content="Signups exported to CSV.", attachments=[discord.File('reactions.xlsx')])
     os.remove('reactions.xlsx')
+    
+    
+# Register the replace message context menu command
+# Command will copy selected message and send it as the bot
+@tree.context_menu(name="Replace message")
+@app_commands.checks.has_role("ServerOps")
+#@is_author()
+async def replace_message(interaction: discord.Interaction, message: discord.Message):
+    await interaction.response.defer(ephemeral=True)
+    
+    # Get the message contents and save them to variables
+    message_content = message.content
+    message_attachments = message.attachments
+    message_embeds = message.embeds
+    
+    # Edit original message with the copied content
+    await interaction.followup.send(content="Message replaced.", ephemeral=True)
+    await interaction.channel.send(content=message_content, files=message_attachments, embeds=message_embeds)
+
+# Register the replace message context menu command
+# Command will copy selected message and send it as the bot
+@tree.context_menu(name="Edit message")
+@app_commands.checks.has_role("ServerOps")
+#@bot_is_author()
+async def edit_message(interaction: discord.Interaction, message: discord.Message):
+    await interaction.response.send_modal(BotMessageEditModal(message))
 
 
 #####################
@@ -287,12 +348,22 @@ async def get_signups(interaction: discord.Interaction, message: discord.Message
 @tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.CommandOnCooldown):
-        await interaction.response.send_message(error, ephemeral=True)
+        try:
+            await interaction.response.send_message(content=f'This command is on cooldown. Try again in {error.retry_after} seconds.', ephemeral=True)
+        except:
+            await interaction.followup.send(content=f'This command is on cooldown. Try again in {error.retry_after} seconds.', ephemeral=True)
+    
     elif isinstance(error, app_commands.MissingRole):
-        await interaction.response.send_message(error, ephemeral=True)
-    elif isinstance(error, app_commands.CommandOnCooldown):
-        await interaction.response.send_message(content=f'This command is on cooldown. Try again in {error.retry_after} seconds.', ephemeral=True)
+        try:
+            await interaction.response.send_message("You do not have the required role for this command", ephemeral=True)
+        except:
+            await interaction.followup.send("You do not have the required role for this command", ephemeral=True)
+
     else:
+        try:
+            await interaction.response.send_message(error, ephemeral=True)
+        except:
+            await interaction.followup.send(error, ephemeral=True)
         print("An error occured!")
         print(error)
         raise error
