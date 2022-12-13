@@ -4,4 +4,3 @@ discord.py==2.0.0
 python-dotenv==0.20.0
 xlsxwriter==3.0.3
 github3.py==3.2.0
-cryptography==3.4.0
