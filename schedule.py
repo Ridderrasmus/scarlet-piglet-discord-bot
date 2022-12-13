@@ -31,12 +31,115 @@ client = gspread.authorize(creds)
 # Set up sheets
 sheets = client.open("Scarlet Pigs OP Schedule").worksheets()
 sheet1 = sheets[0]
-sheet2 = sheets[1]
+archive_sheet = sheets[1]
+entire_sheet = sheet1.get_all_values()
+
+# Get cell entry
+def get_cell_entry(row: int, column: int):
+    return entire_sheet[row-1][column-1]
+
+# Set cell entry
+def set_cell_entry(row: int, column: int, value: str):
+    entire_sheet[row-1][column-1] = value
 
 # Settings entered on the sheet
-date_amount_cell = sheet1.cell(2, 7)
-schedule_message_info_cell = sheet1.cell(3, 7)
+date_amount = int (get_cell_entry(2, 7))
+schedule_message_info = get_cell_entry(3, 7)
+modlist_message_info = get_cell_entry(4, 7)
         
+# Update local sheet
+def update_local_sheet():
+    global entire_sheet
+    global date_amount
+    global schedule_message_info
+    global modlist_message_info
+    entire_sheet = sheet1.get_all_values()
+    date_amount = int (get_cell_entry(2, 7))
+    schedule_message_info = get_cell_entry(3, 7)
+    modlist_message_info = get_cell_entry(4, 7)
+    
+# Update online sheet
+def update_online_sheet():
+    sheet1.update(entire_sheet)
+
+# Get schedule messages
+def get_schedule_messages():
+    if schedule_message_info == "" or schedule_message_info == None: 
+        return { "servers": []}
+    else:
+        return json.loads(schedule_message_info)
+    
+# Save schedule message
+def set_schedule_message_id(guild_id: int, channel_id: int, message_id: int):
+    serverdata = get_schedule_messages()
+    guild_ids = [server["guild_id"] for server in serverdata["servers"]]
+    
+    if (guild_id in guild_ids):
+        index = guild_ids.index(guild_id)
+        serverdata["servers"][index]["channel_id"] = channel_id
+        serverdata["servers"][index]["message_id"] = message_id
+    else:
+        serverdata["servers"].append({"guild_id": guild_id, "channel_id": channel_id, "message_id": message_id})
+    
+    set_cell_entry(3, 7, json.dumps(serverdata))
+    update_online_sheet()
+    
+# Remove a schedule message
+def remove_schedule_message(id: int):
+    serverdata = get_schedule_messages()
+    guild_ids = [server["guild_id"] for server in serverdata["servers"]]
+    channel_ids = [server["channel_id"] for server in serverdata["servers"]]
+    message_ids = [server["message_id"] for server in serverdata["servers"]]
+    
+    if (id in guild_ids):
+        index = guild_ids.index(id)
+    elif (id in channel_ids):
+        index = channel_ids.index(id)
+    elif (id in message_ids):
+        index = message_ids.index(id)
+    else:
+        return
+    
+    serverdata["servers"].pop(index)
+        
+    set_cell_entry(3, 7, json.dumps(serverdata))
+    update_online_sheet()
+    
+# Get modlist messages
+def get_modlist_messages():
+    if modlist_message_info == "" or modlist_message_info == None: 
+        return { "servers": []}
+    else:
+        return json.loads(modlist_message_info)
+    
+# Save modlist message
+def add_modlist_message(guild_id: int, channel_id: int, message_id: int, file_path: str):
+    serverdata = get_modlist_messages()
+    serverdata["servers"].append({"guild_id": guild_id, "channel_id": channel_id, "message_id": message_id, "file_path": file_path})
+    
+    set_cell_entry(4, 7, json.dumps(serverdata))
+    update_online_sheet()
+    
+# Remove a modlist message
+def remove_modlist_message(id: int):
+    serverdata = get_modlist_messages()
+    guild_ids = [server["guild_id"] for server in serverdata["servers"]]
+    channel_ids = [server["channel_id"] for server in serverdata["servers"]]
+    message_ids = [server["message_id"] for server in serverdata["servers"]]
+    
+    if (id in guild_ids):
+        index = guild_ids.index(id)
+    elif (id in channel_ids):
+        index = channel_ids.index(id)
+    elif (id in message_ids):
+        index = message_ids.index(id)
+    else:
+        return
+    
+    serverdata["servers"].pop(index)
+    
+    set_cell_entry(4, 7, json.dumps(serverdata))
+    update_online_sheet()
 
 # Get the date of the next sunday
 def get_next_sunday():
@@ -51,50 +154,28 @@ def get_next_n_sundays(n = 5):
     for i in range(n):
         sunday_after = next_sunday + datetime.timedelta(days=i*7)
         next_n_sundays.append(sunday_after.strftime("%b %d (%y)"))
-    return next_n_sundays
-
-def get_schedule_messages():
-    schedule_message_info = schedule_message_info_cell.value
-    if schedule_message_info == "" or schedule_message_info == None: 
-        return { "servers": []}
-    else:
-        return json.loads(schedule_message_info)
-    
-# Save schedule message
-# TODO: Make local file using JSON to support multiple servers
-def set_schedule_message_id(guild_id: int, channel_id: int, message_id: int):
-    serverdata = get_schedule_messages()
-    guild_ids = [server["guild_id"] for server in serverdata["servers"]]
-    
-    if (guild_id in guild_ids):
-        index = guild_ids.index(guild_id)
-        serverdata["servers"][index]["channel_id"] = channel_id
-        serverdata["servers"][index]["message_id"] = message_id
-    else:
-        serverdata["servers"].append({"guild_id": guild_id, "channel_id": channel_id, "message_id": message_id})
-        
-    sheet1.update_cell(3, 7, json.dumps(serverdata))
+    return next_n_sundays    
 
 # Return schedule dates
 def get_schedule_dates():
-    next_sundays = get_next_n_sundays(int(date_amount_cell.value)+4)
-    dates = sheet1.col_values(1)
-    names = sheet1.col_values(2)
-    authors = sheet1.col_values(3)
+    update_local_sheet()
+    dates = [row[0] for row in entire_sheet]
+    names = [row[1] for row in entire_sheet]
+    authors = [row[2] for row in entire_sheet]
     old_ops = [dates, names, authors]
-    
-    next_sundays = get_next_n_sundays(int(date_amount_cell.value))
+    next_sundays = get_next_n_sundays(date_amount)
     ops = []
     
-    previous_sundays = [x for x in old_ops[0] if x not in next_sundays]
+    # Go through all the ops that have taken place and add them to the archive sheet
+    previous_sundays = [date for date in old_ops[0] if date not in next_sundays]
     for old_sunday in previous_sundays:
         if (old_sunday != "Date"):
             index = old_ops[0].index(old_sunday)
             old_name = old_ops[1][index]
             old_author = old_ops[2][index]
-            sheet2.append_row(values=[old_sunday, old_name, old_author])
-        
+            archive_sheet.append_row(values=[old_sunday, old_name, old_author])
     
+    # Go through all the ops that are coming up and add them to the schedule (And make sure they're ordered correctly)
     for i in range(1, 11):
         name = ''
         author = ''
@@ -106,11 +187,15 @@ def get_schedule_dates():
                 author = old_ops[2][index]
         ops.append([next_sundays[i-1], name, author])
     
-    
+    # Update the online sheet with the new schedule
     for i in range(0,10):
-        sheet_range = 'A' + str(i+2) + ':C' + str(i+2)
-        sheet1.batch_update([{'range' : sheet_range, 'values' : [ops[i]]}])
+        set_cell_entry(i+2, 1, ops[i][0])
+        set_cell_entry(i+2, 2, ops[i][1])
+        set_cell_entry(i+2, 3, ops[i][2])
         
+    update_online_sheet()
+    
+    # Return the new schedule in a format that is more easily usable
     dates = []
     names = []
     authors = []
@@ -121,11 +206,6 @@ def get_schedule_dates():
         authors.append(ops[i][2])
 
     return [dates, names, authors]
-
-
-        
-        
-        
         
 # Updates an op entry in the schedule
 # Use
@@ -137,16 +217,17 @@ def update_op(datex, opname = None, opauthor = None):
     for i in range(2, len(entries)):
         if entries[i] == datex:
             if opname != None:
-                sheet1.update_cell(i+1, 2, opname)
+                set_cell_entry(i+1, 2, opname)
             if opauthor != None:
-                sheet1.update_cell(i+1, 3, opauthor)
+                set_cell_entry(i+1, 3, opauthor)
+    update_online_sheet()
     return None
 
 # Get data on specific op
 def get_op_data(date = None, op = None, author = None):
-    dateinfo = sheet1.col_values(1)
-    opinfo = sheet1.col_values(2)
-    authorinfo = sheet1.col_values(3)
+    dateinfo = [row[0] for row in zip(*entire_sheet)]
+    opinfo = [row[1] for row in zip(*entire_sheet)]
+    authorinfo = [row[2] for row in zip(*entire_sheet)]
 
     if(date != None):
         for i in range(1, len(dateinfo)):
@@ -166,32 +247,28 @@ def get_op_data(date = None, op = None, author = None):
 # Returns a list of all op entries in the sheet
 def get_full_schedule():
     full_schedule = get_schedule_dates()
-    dates = []
-    for i in range(0, len(full_schedule[0])):
-        dates.append([full_schedule[0][i], full_schedule[1][i], full_schedule[2][i]])
-    return dates
+    entries = []
+    entries = list(zip(*full_schedule))
+    # for i in range(0, len(full_schedule)):
+    #     entries.append([full_schedule[0][i], full_schedule[1][i], full_schedule[2][i]])
+    return entries
 
 # Get the dates without an op
 def get_free_dates():
     full_schedule = get_full_schedule()
     free_dates = []
-    for i in range(0, len(full_schedule)):
-        if full_schedule[i][1] == "" or full_schedule[i][1] == None:
-            free_dates.append([full_schedule[i][0], full_schedule[i][1], full_schedule[i][2]])
+    for entry in full_schedule:
+        if entry[1] == "" or entry[1] == None:
+            free_dates.append([entry[0], entry[1], entry[2]])
     return free_dates
 
 # Get the dates with an op
 def get_booked_dates():
     full_schedule = get_full_schedule()
     booked_dates = []
-    for i in range(0, len(full_schedule)):
-        if full_schedule[i][1] != "" and full_schedule[i][1] != None:
-            booked_dates.append([full_schedule[i][0], full_schedule[i][1], full_schedule[i][2]])
+    for entry in full_schedule:
+        if entry[1] != "" and entry[1] != None:
+            booked_dates.append([entry[0], entry[1], entry[2]])
     return booked_dates
 
-
-
-
-
-get_schedule_dates()
 print("Sheets updated and setup")
