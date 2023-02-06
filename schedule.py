@@ -140,10 +140,17 @@ def remove_modlist_message(id: int):
     
     set_cell_entry(4, 7, json.dumps(serverdata))
     update_online_sheet()
+   
+# Get the todays date 
+def get_todays_date():
+    today = datetime.date.today()
+    if (today.weekday() == 6 and datetime.datetime.now().hour >= 16):
+        today = today + datetime.timedelta(days=1)
+    return today
 
 # Get the date of the next sunday
 def get_next_sunday():
-    today = datetime.date.today()
+    today = get_todays_date()
     next_sunday = today + datetime.timedelta(days= (6 - today.weekday()))
     return next_sunday
 
