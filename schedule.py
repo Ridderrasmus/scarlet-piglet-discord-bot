@@ -32,6 +32,7 @@ client = gspread.authorize(creds)
 sheets = client.open("Scarlet Pigs OP Schedule").worksheets()
 sheet1 = sheets[0]
 archive_sheet = sheets[1]
+dlc_sheet = sheets[2]
 entire_sheet = sheet1.get_all_values()
 
 # Get cell entry
@@ -46,6 +47,7 @@ def set_cell_entry(row: int, column: int, value: str):
 date_amount = int (get_cell_entry(2, 7))
 schedule_message_info = get_cell_entry(3, 7)
 modlist_message_info = get_cell_entry(4, 7)
+questionnaire_message_info = get_cell_entry(5, 7)
         
 # Update local sheet
 def update_local_sheet():
@@ -57,6 +59,7 @@ def update_local_sheet():
     date_amount = int (get_cell_entry(2, 7))
     schedule_message_info = get_cell_entry(3, 7)
     modlist_message_info = get_cell_entry(4, 7)
+    questionnaire_message_info = get_cell_entry(5, 7)
     
 # Update online sheet
 def update_online_sheet():
@@ -140,6 +143,27 @@ def remove_modlist_message(id: int):
     
     set_cell_entry(4, 7, json.dumps(serverdata))
     update_online_sheet()
+    
+# Get questionnaire messages
+def get_questionnaire_message():
+    update_online_sheet()
+    if questionnaire_message_info == "" or questionnaire_message_info == None: 
+        return None
+    else:
+        return json.loads(questionnaire_message_info)
+    
+# Save questionnaire message
+def set_questionnaire_message(guild_id: int, channel_id: int, message_id: int):
+    serverdata = {"guild_id": guild_id, "channel_id": channel_id, "message_id": message_id}
+    set_cell_entry(5, 7, json.dumps(serverdata))
+    update_online_sheet()
+
+def get_questionnaire_info():
+    everything = dlc_sheet.get_all_values()
+    return everything
+
+def set_questionnaire_info(info):
+    dlc_sheet.update(info)
    
 # Get the todays date 
 def get_todays_date():
@@ -232,22 +256,22 @@ def update_op(datex, opname = None, opauthor = None):
 
 # Get data on specific op
 def get_op_data(date = None, op = None, author = None):
-    dateinfo = [row[0] for row in zip(*entire_sheet)]
-    opinfo = [row[1] for row in zip(*entire_sheet)]
-    authorinfo = [row[2] for row in zip(*entire_sheet)]
+    datecolumn = [row[0] for row in entire_sheet]
+    opcolumn = [row[1] for row in entire_sheet]
+    authorcolumn = [row[2] for row in entire_sheet]
 
     if(date != None):
-        for i in range(1, len(dateinfo)):
-            if dateinfo[i] == date:
-                return [dateinfo[i], opinfo[i], authorinfo[i]]
+        for i in range(1, len(datecolumn)):
+            if datecolumn[i] == date:
+                return [datecolumn[i], opcolumn[i], authorcolumn[i]]
     elif(op != None):
-        for i in range(1, len(opinfo)):
-            if opinfo[i] == op:
-                return [dateinfo[i], opinfo[i], authorinfo[i]]
+        for i in range(1, len(opcolumn)):
+            if opcolumn[i] == op:
+                return [datecolumn[i], opcolumn[i], authorcolumn[i]]
     elif(author != None):
-        for i in range(1, len(authorinfo)):
-            if authorinfo[i] == author:
-                return [dateinfo[i], opinfo[i], authorinfo[i]]
+        for i in range(1, len(authorcolumn)):
+            if authorcolumn[i] == author:
+                return [datecolumn[i], opcolumn[i], authorcolumn[i]]
     else:
         return None
 

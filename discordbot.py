@@ -8,15 +8,62 @@ import os
 import xlsxwriter
 import base64
 import io
+import asyncio
 
 ## Github setup
 gh = github3.login(username=os.getenv("GITHUB_USERNAME"), password=os.getenv("GITHUB_PASSWORD"), token=os.getenv("GITHUB_TOKEN"))
 
-#########################
-### Defined functions ###
-#########################
+########################
+### Helper functions ###
+########################
 
-### --- Schedule related functions --- ###
+### --- Discord reaction related functions --- ###
+
+async def get_reactions_from_message(message : discord.Message):
+    # Get message reactions and return out of the function if there are none
+    msg_reactions = message.reactions
+    if not msg_reactions:
+        return None
+    
+    # For each reaction create dict with reaction name and list of users
+    reactions = []
+    for reaction in msg_reactions:
+        name = reaction.emoji if not reaction.is_custom_emoji() else reaction.emoji.name
+        reactions.append({
+            'emoji_name': name,
+            'reactors' : set([user async for user in reaction.users()])
+        })
+    
+    # Get all the users that reacted to the message
+    all_reactors = set()
+    for reaction in reactions:
+        all_reactors.update(reaction['reactors'])
+    all_reactors = list(all_reactors)
+    
+    # Create a dictionary mapping each user to a list of their reactions
+    user_reactions = {reactor: set() for reactor in all_reactors}
+    for reaction in reactions:
+        for reactor in reaction['reactors']:
+            user_reactions[reactor].add(reaction['emoji_name'])
+    
+    # Create header row
+    header_row = ["Name"]
+    for reaction in reactions:
+        header_row.append(reaction["emoji_name"])
+        
+    # Create rows for each player with their reactions
+    player_rows = []
+    for reactor in all_reactors:
+        player_row = [reactor.display_name]
+        for reaction in reactions:
+            player_row.append("X" if reaction['emoji_name'] in user_reactions[reactor] else "")
+        player_rows.append(player_row)
+        
+    # Combine the header row and player rows into one list
+    return ([header_row] + player_rows)
+
+
+### --- Formatting related functions --- ###
 
 # Function to format schedule message entries
 def format_schedule_message_entry(entry : str, entry_type : int):
@@ -67,6 +114,17 @@ def format_schedule_message():
         if this_schedule.index(booking) != len(this_schedule) - 1:
             formatted_schedule += f"\n"
     return f"```{formatted_schedule}```"
+
+# Formats the list of DLCs into a nice reaction string
+def format_dlc_list(dlclist):
+    string = ""
+    length = 20
+    for i in range(1, len(dlclist)):
+        dlc = dlclist[i]
+        
+        string += f"{dlc[2]} - {dlc[0]}\n"
+        
+    return string
 
 
 ### --- Github related functions --- ###
@@ -304,6 +362,49 @@ async def createmodlist(interaction: discord.Interaction, repofilepath : str):
     schedule.add_modlist_message(guild_id, channel.id, msg.id, repofilepath)
 
     await interaction.followup.send(content="Modlist message created.", ephemeral=True)
+    
+# Register the create questionnaire message command
+@TREE.command(name="createquestionnaire", description="Create DLC questionnaire in channel. (WARNING: Will delete any previous questionnaire messages)")
+@app_commands.checks.has_role("Unit Organizer")
+async def createquestionnaire(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    guild_id = interaction.guild_id
+    channel = interaction.channel
+    questionnaire_message = schedule.get_questionnaire_message()
+    
+    if (not questionnaire_message == None):
+        # Check if the bot has access to the previous questionnaire message
+        if(questionnaire_message['guild_id'] not in [guild.id for guild in BOT.guilds]):
+            await interaction.followup.send(content="I do not have access to the previous questionnaire message.", ephemeral=True)
+            return
+        
+        # Attempt to delete previous questionnaire message
+        old_channel = BOT.get_channel(questionnaire_message['channel_id'])
+        try:
+            old_msg = await old_channel.fetch_message(questionnaire_message['message_id'])
+            await old_msg.delete()
+        except:
+            print("Couldn't delete old message")
+    
+    dlcs = schedule.get_questionnaire_info()
+    msg_content = f"**The Scarlet Pigs DLC Questionnaire**\n\nPlease react to this message with the DLCs you have to allow the mission makers to better keep track of which DLCs they can make use of.\n\n*DLCs:*\n{format_dlc_list(dlcs)}"
+    new_msg = await channel.send(content=msg_content)
+    await interaction.followup.send(content="DLC questionnaire created.", ephemeral=True)
+    
+    await asyncio.sleep(1)
+    
+    # Add regional indicators as a reaction to the message
+    for i in range(1, len(dlcs)):
+        emoji = dlcs[i][2]
+        try:
+            await new_msg.add_reaction(emoji)
+        
+        except Exception as error:
+            print(f"Couldn't add reaction because {error}")
+    
+    schedule.set_questionnaire_message(guild_id, channel.id, new_msg.id)
+    await check_dlc_message()
+    
 
     
     
@@ -324,48 +425,11 @@ async def get_signups(interaction : discord.Interaction, message: discord.Messag
     # TODO: Make this also use the roles tags to show trainings
     # message.channel.members
     
-    # Get message reactions and return out of the function if there are none
-    msg_reactions = message.reactions
-    if not msg_reactions:
+    all_rows = get_reactions_from_message(message)
+    
+    if (all_rows == None):
         await interaction.followup.send(content="Message has no reactions...")
         return
-    
-    # For each reaction create dict with reaction name and list of users
-    reactions = []
-    for reaction in msg_reactions:
-        name = reaction.emoji if not reaction.is_custom_emoji() else reaction.emoji.name
-        reactions.append({
-            'emoji_name': name,
-            'reactors' : set([user async for user in reaction.users()])
-        })
-    
-    # Get all the users that reacted to the message
-    all_reactors = set()
-    for reaction in reactions:
-        all_reactors.update(reaction['reactors'])
-    all_reactors = list(all_reactors)
-    
-    # Create a dictionary mapping each user to a list of their reactions
-    user_reactions = {reactor: set() for reactor in all_reactors}
-    for reaction in reactions:
-        for reactor in reaction['reactors']:
-            user_reactions[reactor].add(reaction['emoji_name'])
-    
-    # Create header row
-    header_row = ["Name"]
-    for reaction in reactions:
-        header_row.append(reaction["emoji_name"])
-        
-    # Create rows for each player with their reactions
-    player_rows = []
-    for reactor in all_reactors:
-        player_row = [reactor.display_name]
-        for reaction in reactions:
-            player_row.append("X" if reaction['emoji_name'] in user_reactions[reactor] else "")
-        player_rows.append(player_row)
-        
-    # Combine the header row and player rows into one list
-    all_rows = [header_row] + player_rows
         
     # Create an in-memory stream for the Excel file
     stream = io.BytesIO()
@@ -434,6 +498,8 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
             await interaction.response.send_message(error, ephemeral=True)
         except:
             await interaction.followup.send(error, ephemeral=True)
+        finally:
+            BOT.fetch_user(os.getenv('CREATOR_ID')).send(f"{interaction.user} tried to use the {interaction.data['name']} command but something went wrong ({error})")
         print("An error occured!")
         print(error)
         raise error
@@ -483,6 +549,29 @@ async def update_scheduled_messages(category : str, messages : dict):
                     await msg.edit(attachments=[discord.File(f"files/{file}")])
                     os.remove(f"files/{file}")
 
+# Function that checks DLC message
+async def check_dlc_message():
+    questionnaire_message = schedule.get_questionnaire_message()
+    questionnaire_info = schedule.get_questionnaire_info()
+    
+    if questionnaire_message == None:
+        return
+    
+    if questionnaire_message['guild_id'] not in [guild.id for guild in BOT.guilds]:
+        return
+    
+    guild = BOT.get_guild(questionnaire_message['guild_id'])
+    channel = guild.get_channel(questionnaire_message['channel_id'])
+    message = await channel.fetch_message(questionnaire_message['message_id'])
+    reactions = message.reactions
+    
+    for i, reaction in enumerate(reactions):
+        count = reaction.count
+        questionnaire_info[i+1][1] = count - 1
+    
+    schedule.set_questionnaire_info(questionnaire_info)
+    
+    
 
 # Register the schedule loop task
 @tasks.loop(hours=1)
@@ -493,5 +582,6 @@ async def schedule_loop():
         try:
             await update_scheduled_messages("schedule", schedule.get_schedule_messages())
             await update_scheduled_messages("modlist", schedule.get_modlist_messages())
+            await check_dlc_message()
         except:
             pass
