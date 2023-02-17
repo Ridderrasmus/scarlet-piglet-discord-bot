@@ -387,15 +387,15 @@ async def createquestionnaire(interaction: discord.Interaction):
             print("Couldn't delete old message")
     
     dlcs = schedule.get_questionnaire_info()
-    msg_content = f"**The Scarlet Pigs DLC Questionnaire**\n\nPlease react to this message with the DLCs you have to allow the mission makers to better keep track of which DLCs they can make use of.\n\n*DLCs:*\n{format_dlc_list(dlcs)}"
-    new_msg = await channel.send(content=msg_content)
+    msg_content = f"**The Scarlet Pigs DLC Questionnaire**\n\nPlease react to this message with the DLCs you have to allow the mission makers to better keep track of which DLCs they can make use of.\n\n*DLCs:*\n{format_dlc_list(dlcs)}\n\n\nResults: https://docs.google.com/spreadsheets/d/e/2PACX-1vQYrmXaRK5P-FatQKhgiy6SEmyTX2sqSBvBxKg5Oz-hTYZMgeh8fFqgRD__mdSn5gC-3LqVC3u02WFJ/pubchart?oid=653336303&format=interactive"
+    new_msg = await channel.send(content=msg_content, embeds=[])
     await interaction.followup.send(content="DLC questionnaire created.", ephemeral=True)
     
     await asyncio.sleep(1)
     
     # Add regional indicators as a reaction to the message
-    for i in range(1, len(dlcs)):
-        emoji = dlcs[i][2]
+    for i, dlc in enumerate(dlcs, start=1):
+        emoji = dlc[2]
         try:
             await new_msg.add_reaction(emoji)
         
@@ -554,6 +554,8 @@ async def check_dlc_message():
     questionnaire_message = schedule.get_questionnaire_message()
     questionnaire_info = schedule.get_questionnaire_info()
     
+    print("Checking DLC message...")
+    
     if questionnaire_message == None:
         return
     
@@ -568,7 +570,10 @@ async def check_dlc_message():
     for i, reaction in enumerate(reactions):
         count = reaction.count
         questionnaire_info[i+1][1] = count - 1
+        
+        print(f"{questionnaire_info[i+1][0]}: {count - 1}")
     
+    print(f"{questionnaire_info}")
     schedule.set_questionnaire_info(questionnaire_info)
     
     
