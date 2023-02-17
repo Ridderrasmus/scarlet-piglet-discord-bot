@@ -554,7 +554,6 @@ async def check_dlc_message():
     questionnaire_message = schedule.get_questionnaire_message()
     questionnaire_info = schedule.get_questionnaire_info()
     
-    print("Checking DLC message...")
     
     if questionnaire_message == None:
         return
@@ -571,10 +570,9 @@ async def check_dlc_message():
         count = reaction.count
         questionnaire_info[i+1][1] = count - 1
         
-        print(f"{questionnaire_info[i+1][0]}: {count - 1}")
     
-    print(f"{questionnaire_info}")
     schedule.set_questionnaire_info(questionnaire_info)
+    print("Updated DLC poll graph")
     
     
 
@@ -585,8 +583,9 @@ async def schedule_loop():
     
     if not BOT.is_closed():        
         try:
+            await check_dlc_message()
             await update_scheduled_messages("schedule", schedule.get_schedule_messages())
             await update_scheduled_messages("modlist", schedule.get_modlist_messages())
-            await check_dlc_message()
+            
         except:
             pass
