@@ -173,8 +173,9 @@ class SPiglet(discord.Client):
         if not self.synced:
             await TREE.sync()
             self.synced = True
-        await schedule_loop.start()
-        await activity_loop.start()
+        activity_loop.start()
+        schedule_loop.start()
+        
     
     async def on_command_error(self, ctx, error):
         await ctx.reply(error, ephemeral = True)
@@ -593,16 +594,19 @@ async def schedule_loop():
             pass
         
 # Register the bot status loop task
-@tasks.loop(minutes=5)
+@tasks.loop(seconds=30)
 async def activity_loop():
-    await BOT.wait_until_ready()
     
     if not BOT.is_closed():
+        
         try:
             with A2SQuery(os.getenv("SERVER_IP"), int(os.getenv("SERVER_PORT")) + 1, timeout=5) as a2s:
                 num_players = a2s.info().players
                 mission = a2s.info().game
-                BOT.activity = discord.Activity(type=discord.ActivityType.watching, name=f"{num_players} players on the server", details=f"Playing {mission}", emoji=discord.PartialEmoji(name="🎮"))
-        except:
-            BOT.activity = discord.Activity(type=discord.ActivityType.custom, name=f"The server is offline", emoji=discord.PartialEmoji(name="🔴"))
+                await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{num_players} players on {mission}"))
+        except TimeoutError:
+            await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.custom, name=f"The server is offline"))
+            pass
+        except Exception as e:
+            print(e)
             pass
