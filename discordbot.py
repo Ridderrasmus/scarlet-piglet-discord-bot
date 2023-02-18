@@ -9,6 +9,7 @@ import xlsxwriter
 import base64
 import io
 import asyncio
+from a2squery import A2SQuery
 
 ## Github setup
 gh = github3.login(username=os.getenv("GITHUB_USERNAME"), password=os.getenv("GITHUB_PASSWORD"), token=os.getenv("GITHUB_TOKEN"))
@@ -588,4 +589,19 @@ async def schedule_loop():
             await update_scheduled_messages("modlist", schedule.get_modlist_messages())
             
         except:
+            pass
+        
+# Register the bot status loop task
+@tasks.loop(minutes=5)
+async def schedule_loop():
+    await BOT.wait_until_ready()
+    
+    if not BOT.is_closed():
+        try:
+            with A2SQuery(os.getenv("SERVER_IP"), int(os.getenv("SERVER_PORT")) + 1, timeout=5) as a2s:
+                num_players = a2s.info().players
+                mission = a2s.info().game
+                BOT.activity = discord.Activity(type=discord.ActivityType.watching, name=f"{num_players} players on the server", details=f"Playing {mission}", emoji=discord.PartialEmoji(name="🎮"))
+        except:
+            BOT.activity = discord.Activity(type=discord.ActivityType.custom, name=f"The server is offline", emoji=discord.PartialEmoji(name="🔴"))
             pass

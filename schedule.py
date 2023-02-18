@@ -29,7 +29,7 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(keyfile_dict=keyvar, sc
 client = gspread.authorize(creds)
 
 # Set up sheets
-sheets = client.open("Scarlet Pigs OP Schedule").worksheets()
+sheets = client.open(os.getenv("GOOGLE_SHEET_NAME")).worksheets()
 sheet1 = sheets[0]
 archive_sheet = sheets[1]
 dlc_sheet = sheets[2]
