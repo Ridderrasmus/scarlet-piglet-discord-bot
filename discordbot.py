@@ -174,6 +174,7 @@ class SPiglet(discord.Client):
             await TREE.sync()
             self.synced = True
         await schedule_loop.start()
+        await activity_loop.start()
     
     async def on_command_error(self, ctx, error):
         await ctx.reply(error, ephemeral = True)
@@ -593,7 +594,7 @@ async def schedule_loop():
         
 # Register the bot status loop task
 @tasks.loop(minutes=5)
-async def schedule_loop():
+async def activity_loop():
     await BOT.wait_until_ready()
     
     if not BOT.is_closed():
