@@ -1,6 +1,7 @@
 from discord.ext import commands, tasks
 from discord import ui, app_commands, Interaction
-import github3
+from a2squery import A2SQuery
+from github import Github
 import datetime
 import discord
 import schedule
@@ -9,10 +10,10 @@ import xlsxwriter
 import base64
 import io
 import asyncio
-from a2squery import A2SQuery
 
 ## Github setup
-gh = github3.login(username=os.getenv("GITHUB_USERNAME"), password=os.getenv("GITHUB_PASSWORD"), token=os.getenv("GITHUB_TOKEN"))
+gh = Github(login_or_token=os.getenv("GITHUB_TOKEN"))
+
 
 ########################
 ### Helper functions ###
@@ -133,15 +134,14 @@ def format_dlc_list(dlclist):
 # Function to copy file from github repo using given file path and then return the file name
 def retrieve_file_from_github(username : str, repository : str, file_path: str):
     try:
-        data = gh.repository(owner=username, repository=repository).file_contents(path=file_path)
+        data = gh.get_repo(f"{username}/{repository}").get_contents(file_path)
         if data == None:
             return None
     except:
         return None
     
-    data_dict = data.as_dict()
-    file_content = data_dict['content']
-    file_name = data_dict['name']
+    file_content = data.content
+    file_name = data.name
 
     with open(f"files/{file_name}", "wb") as f:
         f.write(base64.decodebytes(file_content.encode('utf-8')))
@@ -162,8 +162,10 @@ class SPiglet(discord.Client):
     def __init__(self):
         global schedule_msg
         global schedule_channel
+        global server_start_time
         schedule_msg = None
         schedule_channel = None
+        server_start_time = None
         super().__init__(intents=discord.Intents.default())
         self.synced = False
         
@@ -452,12 +454,12 @@ async def get_signups(interaction : discord.Interaction, message: discord.Messag
     await interaction.followup.send(content="Signups exported to Excel sheet.", files=[discord.File(stream, "signups.xlsx")])
     stream.close()
     
-# Register the replace message context menu command
+# Register the copy message context menu command
 # Command will copy selected message and send it as the BOT
-@TREE.context_menu(name="Replace message")
+@TREE.context_menu(name="Copy message")
 @app_commands.checks.has_role("ServerOps")
 @is_author()
-async def replace_message(interaction: discord.Interaction, message: discord.Message):
+async def copy_message(interaction: discord.Interaction, message: discord.Message):
     await interaction.response.defer(ephemeral=True)
     
     # Get the message contents and save them to variables
@@ -597,15 +599,20 @@ async def schedule_loop():
 @tasks.loop(seconds=30)
 async def activity_loop():
     
+    
     if not BOT.is_closed():
         
+        if server_start_time == None:
+            server_start_time = datetime.datetime.now()
         try:
             with A2SQuery(os.getenv("SERVER_IP"), int(os.getenv("SERVER_PORT")) + 1, timeout=5) as a2s:
                 num_players = a2s.info().players
                 mission = a2s.info().game
-                await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{num_players} players on {mission}"))
+                plural_str = "s" if num_players != 1 else ""
+                await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{num_players} player" + plural_str + f" on {mission}", timestamps={"start" : server_start_time}))
         except TimeoutError:
-            await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.custom, name=f"The server is offline"))
+            await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"an offline server"))
+            server_start_time = None
             pass
         except Exception as e:
             print(e)
