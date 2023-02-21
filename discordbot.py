@@ -132,30 +132,28 @@ def format_dlc_list(dlclist):
 ### --- Github related functions --- ###
 
 # Function to copy file from github repo using given file path and then return the file name
-def retrieve_file_from_github(username : str, repository : str, file_path: str):
+def retrieve_file_from_github(file_path: str):
     try:
-        data = gh.get_repo(f"{username}/{repository}").get_contents(file_path)
+        data = gh.get_repo(f"MacbainSP/Scarlet-Pigs-Server-Stuff").get_contents(file_path)
         if data == None:
             return None
-    except:
-        return None
-    
-    file_content = data.content
-    file_name = data.name
+        
+        file_content = data.content
+        file_name = data.name
 
-    with open(f"files/{file_name}", "wb") as f:
-        f.write(base64.decodebytes(file_content.encode('utf-8')))
-    return file_name
+        stream = io.BytesIO()
+        os.makedirs("files", exist_ok=True)
+        with open(f"files/{file_name}", "wb") as f:
+            f.write(base64.decodebytes(file_content.encode('utf-8')))
+        return file_name
+    except Exception as e:
+        print(e)
+    
+    
 
 ###############
 ### Classes ###
 ###############
-
-# Define a booked op class
-class BookedOp():
-    OPName = ""
-    OPAuthor = ""
-    OPDate = ""
 
 # Define the BOT class
 class SPiglet(discord.Client):
@@ -193,7 +191,9 @@ TREE = app_commands.CommandTree(BOT)
 
 # Define the reserve sunday Select
 class DateSelect(discord.ui.Select):
-    def __init__(self):
+    def __init__(self, opname, opauthor):
+        self.opname = opname
+        self.opauthor = opauthor
         next_sundays = schedule.get_free_dates()
         options = []
         if len(next_sundays) == 0:
@@ -209,8 +209,8 @@ class DateSelect(discord.ui.Select):
             embed.set_author(name = interaction.user, icon_url = interaction.user.display_avatar)
             content = "No date picked."
         else:
-            schedule.update_op(self.values[0], BookedOp.OPName, BookedOp.OPAuthor)
-            embed = discord.Embed(title = "Reserved a Sunday", description = f"Op named {BookedOp.OPName} made by {BookedOp.OPAuthor} is booked for {self.values[0]}.", timestamp = datetime.datetime.utcnow(), color = discord.Colour.blue())
+            schedule.update_op(self.values[0], self.opname, self.opauthor)
+            embed = discord.Embed(title = "Reserved a Sunday", description = f"Op named {self.opname} made by {self.opauthor} is booked for {self.values[0]}.", timestamp = datetime.datetime.utcnow(), color = discord.Colour.blue())
             embed.set_author(name = interaction.user, icon_url = interaction.user.display_avatar)
             content = "Date picked."
         await schedule_loop()
@@ -228,10 +228,8 @@ class OpEditSelect(discord.ui.Select):
         super().__init__(placeholder = "Choose the op", min_values=1, max_values=1, options = options)
     async def callback(self, interaction: discord.Interaction):
         date = schedule.get_op_data(date=self.values[0])
-        await interaction.response.send_modal(OpEditModal(date[1], date[2]))
-        BookedOp.OPDate = date[0]
-        BookedOp.OPName = date[1]
-        BookedOp.OPAuthor = date[2]
+        await interaction.response.send_modal(OpEditModal(date[0], date[1], date[2]))
+
         
 ######################
 ### Modals (Forms) ###
@@ -242,18 +240,17 @@ class OpEditModal(discord.ui.Modal, title = "Edit an op"):
     opname = ui.TextInput(label='OP Name', min_length=1, max_length=31)
     author = ui.TextInput(label='Author', min_length=1, max_length=15)
     
-    def __init__(self, opnamevalue, authorvalue):
+    def __init__(self, date, opnamevalue, authorvalue):
         self.opname.default = opnamevalue
         self.author.default = authorvalue
+        self.date = date
         super().__init__()
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        BookedOp.OPName = self.opname.value
-        BookedOp.OPAuthor = self.author.value
-        schedule.update_op(BookedOp.OPDate, BookedOp.OPName, BookedOp.OPAuthor)
+        schedule.update_op(self.date, self.opname.value, self.author.value)
         await schedule_loop()
-        embed = discord.Embed(title = "Edited a Sunday", description = f"Op named {self.opname.value} made by {self.author.value} is booked for {BookedOp.OPDate}.", timestamp = datetime.datetime.utcnow(), color = discord.Colour.blue())
+        embed = discord.Embed(title = "Edited a Sunday", description = f"Op named {self.opname.value} made by {self.author.value} is booked for {self.date}.", timestamp = datetime.datetime.utcnow(), color = discord.Colour.blue())
         await interaction.followup.send(content="Op edited", embed = embed)
         
 # Define the edit BOT message modal with the given variable when called (the message to edit)
@@ -310,9 +307,7 @@ async def send(interaction: Interaction, message: str):
 @app_commands.checks.has_role("Mission Maker")
 async def reservesunday(interaction: discord.Interaction, opname: str, authorname: str):
     await interaction.response.defer(ephemeral=True)
-    BookedOp.OPName = opname
-    BookedOp.OPAuthor = authorname
-    view = discord.ui.View(timeout=180).add_item(DateSelect())
+    view = discord.ui.View(timeout=180).add_item(DateSelect(opname, authorname))
     await interaction.followup.send(content="Reserved an op. Now pick the date: ", view=view)
 
 # Register the edit op command
@@ -356,13 +351,13 @@ async def createmodlist(interaction: discord.Interaction, repofilepath : str):
     channel = interaction.channel
     guild_id = interaction.guild_id
 
-    file = retrieve_file_from_github("MacbainSP", "Scarlet-Pigs-Server-Stuff", repofilepath)
-    if (file == None):
+    file_name = retrieve_file_from_github(repofilepath)
+    if (file_name == None):
         await interaction.followup.send(content="Couldn't find the file. Make sure the file exists and the path is correct. (An example path format would be Modlists/ScarletBannerKAT.html)", ephemeral=True)
         return
     
-    msg = await channel.send(content=f"The modlist file: {file}", files=[discord.File(f"files/{file}")])
-    os.remove(f"files/{file}")
+    msg = await channel.send(content=f"The modlist file: {file_name}", files=[discord.File(f"files/{file_name}")])
+    os.remove(f"files/{file_name}")
     
     schedule.add_modlist_message(guild_id, channel.id, msg.id, repofilepath)
 
@@ -550,9 +545,9 @@ async def update_scheduled_messages(category : str, messages : dict):
                     await msg.edit(content=format_schedule_message())
                 elif category == "modlist":
                     file_path = server['file_path']
-                    file = retrieve_file_from_github("MacbainSP", "Scarlet-Pigs-Server-Stuff", file_path)
-                    await msg.edit(attachments=[discord.File(f"files/{file}")])
-                    os.remove(f"files/{file}")
+                    file_name = retrieve_file_from_github(file_path)
+                    await msg.edit(attachments=[discord.File(f"files/{file_name}")])
+                    os.remove(f"files/{file_name}")
 
 # Function that checks DLC message
 async def check_dlc_message():
