@@ -251,7 +251,7 @@ class OpEditModal(discord.ui.Modal, title = "Edit an op"):
         schedule.update_op(self.date, self.opname.value, self.author.value)
         await schedule_loop()
         embed = discord.Embed(title = "Edited a Sunday", description = f"Op named {self.opname.value} made by {self.author.value} is booked for {self.date}.", timestamp = datetime.datetime.utcnow(), color = discord.Colour.blue())
-        await interaction.followup.send(content="Op edited", embed = embed)
+        await interaction.followup.send(content="Op edited", embed = embed, ephemeral = True)
         
 # Define the edit BOT message modal with the given variable when called (the message to edit)
 class BOTMessageEditModal(discord.ui.Modal, title = "Edit BOT message"):
