@@ -425,7 +425,7 @@ async def get_signups(interaction : discord.Interaction, message: discord.Messag
     # TODO: Make this also use the roles tags to show trainings
     # message.channel.members
     
-    all_rows = get_reactions_from_message(message)
+    all_rows = await get_reactions_from_message(message)
     
     if (all_rows == None):
         await interaction.followup.send(content="Message has no reactions...")
@@ -440,8 +440,8 @@ async def get_signups(interaction : discord.Interaction, message: discord.Messag
     workbook.set_custom_property("Encoding", "utf-8-sig")
     
     # Write the data to the sheet, close it, and then reset the stream pointer
-    for row, data in enumerate(all_rows):
-        sheet.write_row(row, 0, data)
+    for i, row in enumerate(all_rows):
+        sheet.write_row(i, 0, row)
     workbook.close()
     stream.seek(0)
     
@@ -499,10 +499,11 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
         except:
             await interaction.followup.send(error, ephemeral=True)
         finally:
-            BOT.fetch_user(os.getenv('CREATOR_ID')).send(f"{interaction.user} tried to use the {interaction.data['name']} command but something went wrong ({error})")
-        print("An error occured!")
-        print(error)
-        raise error
+            creator = await BOT.fetch_user(os.getenv('CREATOR_ID'))
+            await creator.send(f"{interaction.user} tried to use the {interaction.data['name']} command but something went wrong ({error})")    
+            print("An error occured!")
+            print(error)
+            raise error
 
 
 ##################
