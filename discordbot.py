@@ -591,7 +591,7 @@ async def schedule_loop():
             pass
         
 # Register the bot status loop task
-@tasks.loop(seconds=30)
+@tasks.loop(minutes=2)
 async def activity_loop():
     
     
@@ -605,10 +605,7 @@ async def activity_loop():
                 mission = a2s.info().game
                 plural_str = "s" if num_players != 1 else ""
                 await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{num_players} player" + plural_str + f" on {mission}", timestamps={"start" : server_start_time}))
-        except TimeoutError:
+        except Exception as e:
             await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"an offline server"))
             server_start_time = None
-            pass
-        except Exception as e:
-            print(e)
             pass

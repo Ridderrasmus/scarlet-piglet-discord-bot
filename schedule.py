@@ -240,17 +240,19 @@ def get_schedule_dates():
         
 # Updates an op entry in the schedule
 # Use
-#   update_op_entry("Nov 06 (22)", opname = "OP Name") to update only opname
+#   update_op("Nov 06 (22)", opname = "OP Name") to update only opname
 # or
-#   update_op_entry("Nov 06 (22)", opauthor = "OP Author") to update only author
+#   update_op("Nov 06 (22)", opauthor = "OP Author") to update only author
 def update_op(datex, opname = None, opauthor = None):
-    entries = sheet1.col_values(1)
-    for i in range(2, len(entries)):
-        if entries[i] == datex:
+    datecolumn = [row[0] for row in entire_sheet]
+    opcolumn = [row[1] for row in entire_sheet]
+    authorcolumn = [row[2] for row in entire_sheet]
+    for i, date in enumerate(datecolumn, start=1):
+        if datecolumn[i] == datex:
             if opname != None:
-                set_cell_entry(i+1, 2, opname)
+                opcolumn[i] = opname
             if opauthor != None:
-                set_cell_entry(i+1, 3, opauthor)
+                authorcolumn[i] = opauthor
     update_online_sheet()
     return None
 
