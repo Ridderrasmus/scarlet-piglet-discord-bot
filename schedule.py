@@ -244,15 +244,13 @@ def get_schedule_dates():
 # or
 #   update_op("Nov 06 (22)", opauthor = "OP Author") to update only author
 def update_op(datex, opname = None, opauthor = None):
-    datecolumn = [row[0] for row in entire_sheet]
-    opcolumn = [row[1] for row in entire_sheet]
-    authorcolumn = [row[2] for row in entire_sheet]
-    for i in range(1, len(datecolumn)):
-        if datecolumn[i] == datex:
+    
+    for i in range(1, len(entire_sheet)):
+        if entire_sheet[i][0] == datex:
             if opname != None:
-                opcolumn[i] = opname
+                entire_sheet[i][1] = opname
             if opauthor != None:
-                authorcolumn[i] = opauthor
+                entire_sheet[i][2] = opauthor
             break
     update_online_sheet()
     return None
