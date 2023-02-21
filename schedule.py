@@ -247,12 +247,13 @@ def update_op(datex, opname = None, opauthor = None):
     datecolumn = [row[0] for row in entire_sheet]
     opcolumn = [row[1] for row in entire_sheet]
     authorcolumn = [row[2] for row in entire_sheet]
-    for i, date in enumerate(datecolumn, start=1):
+    for i in range(1, len(datecolumn)):
         if datecolumn[i] == datex:
             if opname != None:
                 opcolumn[i] = opname
             if opauthor != None:
                 authorcolumn[i] = opauthor
+            break
     update_online_sheet()
     return None
 
