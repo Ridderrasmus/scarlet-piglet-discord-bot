@@ -177,7 +177,6 @@ class SPiglet(discord.Client):
         server_start_time = None
         super().__init__(intents=discord.Intents.default())
         self.synced = False
-        
     
     async def on_ready(self):
         await self.wait_until_ready()
@@ -186,21 +185,6 @@ class SPiglet(discord.Client):
             self.synced = True
         activity_loop.start()
         schedule_loop.start()
-    
-    
-    async def on_reaction_add(self, reaction : discord.Reaction, user):
-        reaction_message = reaction.message
-        if user == BOT.user:
-            return
-        
-        if not reaction_message.channel.name == "op-announcements":
-            return
-        
-        
-        
-
-    
-        
     
     async def on_command_error(self, ctx, error):
         await ctx.reply(error, ephemeral = True)
@@ -290,20 +274,6 @@ class BOTMessageEditModal(discord.ui.Modal, title = "Edit BOT message"):
     async def on_submit(self, interaction: discord.Interaction):
         await self.message.edit(content = self.edit_message_textfield.value)
         await interaction.response.send_message("Message edited", ephemeral = True)
-        
-# Define the op announcement modal
-class BOTMessageEditModal(discord.ui.Modal, title = "Create OP announcement"):
-    announcement_textfield = ui.TextInput(style=discord.TextStyle.paragraph, label='Announcement message', min_length=1, max_length=2000)
-    announcement_ping = ui.RoleSelect(placeholder='Choose a role to ping')
-    
-    # Get the message to edit
-    def __init__(self):
-        super().__init__()
-
-    async def on_submit(self, interaction: discord.Interaction):
-        
-        await interaction.response.send_message("Announcement created. Please add your reactions now.", ephemeral = True)
-
 
 
 ##################################
