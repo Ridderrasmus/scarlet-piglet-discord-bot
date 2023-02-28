@@ -592,23 +592,22 @@ async def schedule_loop():
             pass
         
 # Register the bot status loop task
-@tasks.loop(minutes=2)
+@tasks.loop(minutes=2, reconnect=True)
 async def activity_loop():
     
     
     if not BOT.is_closed():
         
-        if server_start_time == None:
-            server_start_time = datetime.datetime.now()
-        
         try:
             with A2SQuery(os.getenv("SERVER_IP"), int(os.getenv("SERVER_PORT")) + 1, timeout=5) as a2s:
                 num_players = a2s.info().players
+                duration = a2s.info().duration
+                starttime = datetime.datetime.now() - datetime.timedelta(seconds=duration)
                 mission = a2s.info().game
                 plural_str = "s" if num_players != 1 else ""
-                await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{num_players} player" + plural_str + f" on {mission}", timestamps={"start" : server_start_time}))
+                await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{num_players} player" + plural_str + f" on {mission}", timestamps={"start" : starttime}))
+        except TimeoutError:
+            await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"an offline server"))
         except Exception as e:
             print(e)
-            await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"an offline server"))
-            server_start_time = None
             pass
