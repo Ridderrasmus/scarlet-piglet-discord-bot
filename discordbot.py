@@ -10,10 +10,10 @@ import xlsxwriter
 import base64
 import io
 import asyncio
+import emoji as emoji_lib
 
 ## Github setup
 gh = Github(login_or_token=os.getenv("GITHUB_TOKEN"))
-
 
 ########################
 ### Helper functions ###
@@ -64,6 +64,17 @@ async def get_reactions_from_message(message : discord.Message):
     # Combine the header row and player rows into one list
     return ([header_row] + player_rows)
 
+# Get a list of all discord and unicode emojis in the string
+def get_emojis_in_message(message : str):
+    emoji_list = []
+    for emoji in message.split():
+        if emoji_lib.is_emoji(emoji):
+            emoji_list.append(emoji_lib.demojize(emoji))
+        elif emoji.startswith("<:"):
+            emoji = emoji.split(":")[2].replace(">", "")
+            emoji_list.append(int(emoji))
+    return emoji_list
+    
 
 ### --- Formatting related functions --- ###
 
@@ -175,6 +186,20 @@ class SPiglet(discord.Client):
             self.synced = True
         activity_loop.start()
         schedule_loop.start()
+    
+    
+    async def on_reaction_add(self, reaction : discord.Reaction, user):
+        reaction_message = reaction.message
+        if user == BOT.user:
+            return
+        
+        if not reaction_message.channel.name == "op-announcements":
+            return
+        
+        
+        
+
+    
         
     
     async def on_command_error(self, ctx, error):
@@ -230,7 +255,7 @@ class OpEditSelect(discord.ui.Select):
         date = schedule.get_op_data(date=self.values[0])
         await interaction.response.send_modal(OpEditModal(date[0], date[1], date[2]))
 
-        
+
 ######################
 ### Modals (Forms) ###
 ######################
@@ -260,12 +285,24 @@ class BOTMessageEditModal(discord.ui.Modal, title = "Edit BOT message"):
     def __init__(self, message):
         self.message = message
         self.edit_message_textfield.default = message.content
-        super().__init__()    
+        super().__init__()
 
     async def on_submit(self, interaction: discord.Interaction):
         await self.message.edit(content = self.edit_message_textfield.value)
         await interaction.response.send_message("Message edited", ephemeral = True)
         
+# Define the op announcement modal
+class BOTMessageEditModal(discord.ui.Modal, title = "Create OP announcement"):
+    announcement_textfield = ui.TextInput(style=discord.TextStyle.paragraph, label='Announcement message', min_length=1, max_length=2000)
+    announcement_ping = ui.RoleSelect(placeholder='Choose a role to ping')
+    
+    # Get the message to edit
+    def __init__(self):
+        super().__init__()
+
+    async def on_submit(self, interaction: discord.Interaction):
+        
+        await interaction.response.send_message("Announcement created. Please add your reactions now.", ephemeral = True)
 
 
 
@@ -405,6 +442,12 @@ async def createquestionnaire(interaction: discord.Interaction):
     schedule.set_questionnaire_message(guild_id, channel.id, new_msg.id)
     await check_dlc_message()
     
+# Register the op announcement command
+@TREE.command(name="opannouncement", description="Create an op announcement message in this channel")
+@app_commands.checks.has_role("Mission Maker")
+async def op_announcement(interaction : discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    await interaction.response.send_modal(BOTMessageEditModal())
 
     
     
@@ -412,6 +455,36 @@ async def createquestionnaire(interaction: discord.Interaction):
 ################################
 ### Context commands section ###
 ################################
+
+# Register the add signups context menu command
+# Get emojis from a message and add them to the message as reactions
+@TREE.context_menu(name="Add signups")
+@app_commands.checks.has_role("Mission Maker")
+@app_commands.checks.cooldown(rate=1, per=120)
+async def add_signups(interaction : discord.Interaction, message: discord.Message):
+    await interaction.response.defer(ephemeral=True)
+    
+    # Get all emojis from the message and from the guild
+    emojis = get_emojis_in_message(message.content)
+    
+    if (len(emojis) == 0):
+        await interaction.followup.send(content="Message has no emojis...")
+        return
+        
+    # Add reactions to the message
+    for emoji in emojis:
+        if type(emoji) == int:
+            emoji = await interaction.guild.fetch_emoji(emoji)
+            await message.add_reaction(emoji)
+        else:
+            try:
+                emoji = emoji_lib.emojize(emoji)
+                await message.add_reaction(emoji)
+            except:
+                print("Couldn't convert emoji to unicode")
+    
+    await interaction.followup.send(content="Reactions added to message.", ephemeral=True)
+
 
 # Register the get signups context menu command
 # Get reactions from a message and returns them as a nice excel sheet
@@ -479,32 +552,29 @@ async def edit_message(interaction: discord.Interaction, message: discord.Messag
 ### Error Handler ###
 #####################
 
+# Error message function
+async def error_response(interaction: discord.Interaction, message: str, expected: bool = True):
+    try:
+        await interaction.response.send_message(content=message, ephemeral=True)
+    except:
+        await interaction.followup.send(content=message, ephemeral=True)
+    finally:
+        if not expected:
+            creator = await BOT.fetch_user(os.getenv('CREATOR_ID'))
+            await creator.send(f"[{datetime.datetime.now()}] - {interaction.user} tried to use a command. Something went wrong! \n({message})")
+            raise message
+
 @TREE.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.CommandOnCooldown):
-        try:
-            await interaction.response.send_message(content=f'This command is on cooldown. Try again in {error.retry_after} seconds.', ephemeral=True)
-        except:
-            await interaction.followup.send(content=f'This command is on cooldown. Try again in {error.retry_after} seconds.', ephemeral=True)
+        await error_response(interaction, f'This command is on cooldown. Try again in {round(error.retry_after)} seconds.')
     
     elif isinstance(error, app_commands.MissingRole):
-        try:
-            await interaction.response.send_message("You do not have the required role for this command", ephemeral=True)
-        except:
-            await interaction.followup.send("You do not have the required role for this command", ephemeral=True)
-
+        await error_response(interaction, "You do not have the required role for this command")
+        
     else:
-        try:
-            await interaction.response.send_message(error, ephemeral=True)
-        except:
-            await interaction.followup.send(error, ephemeral=True)
-        finally:
-            creator = await BOT.fetch_user(os.getenv('CREATOR_ID'))
-            await creator.send(f"{interaction.user} tried to use the {interaction.data['name']} command but something went wrong ({error})")    
-            print("An error occured!")
-            print(error)
-            raise error
-
+        await error_response(interaction, error, False)
+        
 
 ##################
 ### Task Loops ###
@@ -567,7 +637,16 @@ async def check_dlc_message():
     message = await channel.fetch_message(questionnaire_message['message_id'])
     reactions = message.reactions
     
+    
+    legacy_users = []
     for i, reaction in enumerate(reactions):
+        x = [user not in guild.members async for user in reaction.users()]
+        if len(x) == 0:
+            break
+        for user in x:
+            await message.remove_reaction(reaction.emoji, user)
+        legacy_users.append(x)
+        
         count = reaction.count
         questionnaire_info[i+1][1] = count - 1
         
@@ -575,7 +654,7 @@ async def check_dlc_message():
     schedule.set_questionnaire_info(questionnaire_info)
     print("Updated DLC poll graph")
     
-    
+
 
 # Register the schedule loop task
 @tasks.loop(hours=1)

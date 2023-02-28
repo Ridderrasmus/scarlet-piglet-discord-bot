@@ -5,3 +5,4 @@ python-dotenv==0.20.0
 xlsxwriter==3.0.3
 a2squery==0.0.2
 PyGithub==1.56
+emoji==2.2.0
