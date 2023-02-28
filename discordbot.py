@@ -65,14 +65,18 @@ async def get_reactions_from_message(message : discord.Message):
     return ([header_row] + player_rows)
 
 # Get a list of all discord and unicode emojis in the string
+# TODO: Fix emoji errors
 def get_emojis_in_message(message : str):
     emoji_list = []
     for emoji in message.split():
-        if emoji_lib.is_emoji(emoji):
-            emoji_list.append(emoji_lib.demojize(emoji))
-        elif emoji.startswith("<:"):
-            emoji = emoji.split(":")[2].replace(">", "")
-            emoji_list.append(int(emoji))
+        if emoji.startswith("<:"):
+            tmp = emoji.replace("><", " ").split()
+            for e in tmp:
+                e = e.replace(">", " ").replace("<", " ").split()
+                emoji_list.append(int(e))
+        else:
+            for e in emoji_lib.distinct_emoji_list(emoji):
+                emoji_list.append(emoji_lib.demojize(e))
     return emoji_list
     
 
