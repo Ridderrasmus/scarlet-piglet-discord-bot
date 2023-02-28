@@ -441,13 +441,6 @@ async def createquestionnaire(interaction: discord.Interaction):
     
     schedule.set_questionnaire_message(guild_id, channel.id, new_msg.id)
     await check_dlc_message()
-    
-# Register the op announcement command
-@TREE.command(name="opannouncement", description="Create an op announcement message in this channel")
-@app_commands.checks.has_role("Mission Maker")
-async def op_announcement(interaction : discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
-    await interaction.response.send_modal(BOTMessageEditModal())
 
     
     
