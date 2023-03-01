@@ -4,7 +4,7 @@ import os
 
 def main():
     # Run the bot
-    BOT.run(os.getenv('DISCORD_TOKEN'))
+    BOT.run(token=os.getenv('DISCORD_TOKEN'), log_handler=log_handler)
     
 
 if __name__ == "__main__":

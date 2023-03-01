@@ -11,6 +11,10 @@ import base64
 import io
 import asyncio
 import emoji as emoji_lib
+import logging
+
+## Logging setup
+log_handler = logging.FileHandler(filename='discordbot.log', encoding='utf-8', mode='w')
 
 ## Github setup
 gh = Github(login_or_token=os.getenv("GITHUB_TOKEN"))
@@ -65,6 +69,7 @@ async def get_reactions_from_message(message : discord.Message):
     return ([header_row] + player_rows)
 
 # Get a list of all discord and unicode emojis in the string
+# TODO: Fix bug when unicode emojis are used directly after a discord emoji
 def get_emojis_in_message(message : str):
     emoji_list = []
     for emoji in message.split():
