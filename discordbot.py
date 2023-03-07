@@ -495,7 +495,6 @@ async def get_signups(interaction : discord.Interaction, message: discord.Messag
 # Command will copy selected message and send it as the BOT
 @TREE.context_menu(name="Copy message")
 @app_commands.checks.has_role("ServerOps")
-@is_author()
 async def copy_message(interaction: discord.Interaction, message: discord.Message):
     await interaction.response.defer(ephemeral=True)
     
@@ -512,7 +511,6 @@ async def copy_message(interaction: discord.Interaction, message: discord.Messag
 # Command will copy selected message and send it as the BOT
 @TREE.context_menu(name="Edit message")
 @app_commands.checks.has_role("ServerOps")
-@BOT_is_author()
 async def edit_message(interaction: discord.Interaction, message: discord.Message):
     await interaction.response.send_modal(BOTMessageEditModal(message))
 
