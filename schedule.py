@@ -192,7 +192,6 @@ def get_next_n_sundays(n = 5):
 
 # Return schedule dates
 def get_schedule_dates():
-    print("Getting schedule dates")
     update_local_sheet()
     dates = [row[0] for row in entire_sheet]
     names = [row[1] for row in entire_sheet]
@@ -240,7 +239,6 @@ def get_schedule_dates():
         names.append(ops[i][1])
         authors.append(ops[i][2])
         
-    print([dates, names, authors])
     return [dates, names, authors]
         
 # Updates an op entry in the schedule
@@ -283,7 +281,6 @@ def get_op_data(date = None, op = None, author = None):
 
 # Returns a list of all op entries in the sheet
 def get_full_schedule():
-    print("Getting full schedule...")
     full_schedule = get_schedule_dates()
     entries = []
     entries = list(zip(*full_schedule))

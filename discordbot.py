@@ -574,7 +574,6 @@ async def update_scheduled_messages(category : str, messages : dict):
                 schedule.remove_modlist_message(message_id)
             continue
         
-        print("Checking the author of the message...")
         # Check if the BOT is the author of the message
         if msg.author.id != BOT.user.id:
             continue
@@ -582,7 +581,6 @@ async def update_scheduled_messages(category : str, messages : dict):
         # Update the message
         print(f'Updating {category} for {guild.name} in channel {channel.name}')
         if category == "schedule":
-            print("Schedule stuff is happening")
             await msg.edit(content=format_schedule_message())
         elif category == "modlist":
             file_path = server['file_path']
@@ -592,7 +590,6 @@ async def update_scheduled_messages(category : str, messages : dict):
 
 # Function that checks DLC message
 async def check_dlc_message():
-    print("Checking DLC message...")
     questionnaire_message = schedule.get_questionnaire_message()
     questionnaire_info = schedule.get_questionnaire_info()
     guild = BOT.get_guild(questionnaire_message['guild_id'])
@@ -633,7 +630,6 @@ async def check_dlc_message():
 
 # The main bulk of the schedule loop
 async def schedule_loop():
-    print("Running schedule loop")
     await BOT.wait_until_ready()
     
     if not BOT.is_closed():        
