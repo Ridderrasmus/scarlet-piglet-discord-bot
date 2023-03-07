@@ -289,20 +289,20 @@ class BOTMessageEditModal(discord.ui.Modal, title = "Edit BOT message"):
 ### Currently do not work      ###
 ##################################
 
-def has_reactions() -> bool:
-    async def predicate(ctx : commands.Context):
-        return len(ctx.message.reactions) > 0
-    return commands.check(predicate)
+# def has_reactions() -> bool:
+#     async def predicate(ctx : commands.Context):
+#         return len(ctx.message.reactions) > 0
+#     return commands.check(predicate)
 
-def is_author() -> bool:
-    async def predicate(ctx : commands.Context):
-        return (ctx.message.author.id == ctx.user.id)
-    return commands.check(predicate)
+# def is_author() -> bool:
+#     async def predicate(ctx : commands.Context):
+#         return (ctx.message.author.id == ctx.user.id)
+#     return commands.check(predicate)
 
-def BOT_is_author() -> bool:
-    async def predicate(ctx : commands.Context):
-        return (ctx.message.author.id == 1012077296515039324)
-    return commands.check(predicate)
+# def BOT_is_author() -> bool:
+#     async def predicate(ctx : commands.Context):
+#         return (ctx.message.author.id == 1012077296515039324)
+#     return commands.check(predicate)
 
 ###############################
 ### Hybrid commands section ###
@@ -552,6 +552,7 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
 
 ## Function to update the scheduled messages (Modlists, OP schedules, etc.)
 async def update_scheduled_messages(category : str, messages : dict):
+    print(f'Updating {category} messages...')
     for server in messages['servers']:
         # Check if the BOT is in the server
         guild_id = server['guild_id']
@@ -576,6 +577,7 @@ async def update_scheduled_messages(category : str, messages : dict):
                 schedule.remove_modlist_message(message_id)
             continue
         
+        print("Checking the author of the message...")
         # Check if the BOT is the author of the message
         if msg.author.id != BOT.user.id:
             continue
@@ -593,6 +595,7 @@ async def update_scheduled_messages(category : str, messages : dict):
 
 # Function that checks DLC message
 async def check_dlc_message():
+    print("Checking DLC message...")
     questionnaire_message = schedule.get_questionnaire_message()
     questionnaire_info = schedule.get_questionnaire_info()
     
