@@ -461,7 +461,6 @@ async def add_signups(interaction : discord.Interaction, message: discord.Messag
 @TREE.context_menu(name="Get signups")
 @app_commands.checks.has_role("Mission Maker")
 @app_commands.checks.cooldown(rate=1, per=120)
-@has_reactions()
 async def get_signups(interaction : discord.Interaction, message: discord.Message):
     await interaction.response.defer(ephemeral=True)
     
