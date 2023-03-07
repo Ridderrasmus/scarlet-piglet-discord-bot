@@ -638,7 +638,8 @@ async def schedule_loop():
             await update_scheduled_messages("schedule", schedule.get_schedule_messages())
             await update_scheduled_messages("modlist", schedule.get_modlist_messages())
             
-        except:
+        except Exception as e:
+            print(e)
             pass
         
 # The main bulk of the activity loop
