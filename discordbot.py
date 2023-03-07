@@ -595,6 +595,7 @@ async def check_dlc_message():
     print("Checking DLC message...")
     questionnaire_message = schedule.get_questionnaire_message()
     questionnaire_info = schedule.get_questionnaire_info()
+    print("Got questionnaire info")
     guild = BOT.get_guild(questionnaire_message['guild_id'])
     channel = guild.get_channel(questionnaire_message['channel_id'])
     
