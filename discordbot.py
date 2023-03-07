@@ -123,6 +123,7 @@ def format_schedule_message_entry(entry : str, entry_type : int):
 
 # The function to format the schedule message
 def format_schedule_message():
+    print("Formatting schedule message")
     formatted_schedule = ""
     this_schedule = schedule.get_full_schedule()
     for booking in this_schedule:
@@ -582,6 +583,7 @@ async def update_scheduled_messages(category : str, messages : dict):
                 # Update the message
                 print(f'Updating {category} for {guild.name} in channel {channel.name}')
                 if category == "schedule":
+                    print("Schedule stuff is happening")
                     await msg.edit(content=format_schedule_message())
                 elif category == "modlist":
                     file_path = server['file_path']
