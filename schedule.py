@@ -5,8 +5,9 @@ import os
 import gspread
 import datetime
 import json
+import utils
 
-
+log = utils.log_handler
 
 # Load environment variables
 load_dotenv()
@@ -61,9 +62,15 @@ def update_local_sheet():
     modlist_message_info = get_cell_entry(4, 7)
     questionnaire_message_info = get_cell_entry(5, 7)
     
+    log.emit("Updated local sheet")
+    print(entire_sheet)
+    
+    
 # Update online sheet
 def update_online_sheet():
     sheet1.update(entire_sheet)
+    log.emit("Updated online sheet")
+    print(entire_sheet)
 
 # Get schedule messages
 def get_schedule_messages():
@@ -235,6 +242,9 @@ def get_schedule_dates():
         dates.append(ops[i][0])
         names.append(ops[i][1])
         authors.append(ops[i][2])
+        
+    log.emit("Schedule updated")
+    print([dates, names, authors])
 
     return [dates, names, authors]
         

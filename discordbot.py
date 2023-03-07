@@ -11,10 +11,8 @@ import base64
 import io
 import asyncio
 import emoji as emoji_lib
-import logging
+import utils
 
-## Logging setup
-log_handler = logging.FileHandler(filename='discordbot.log', encoding='utf-8', mode='w')
 
 ## Github setup
 gh = Github(login_or_token=os.getenv("GITHUB_TOKEN"))
