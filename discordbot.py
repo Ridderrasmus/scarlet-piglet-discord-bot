@@ -189,8 +189,8 @@ class SPiglet(discord.Client):
         if not self.synced:
             await TREE.sync()
             self.synced = True
-        activity_loop.start()
         schedule_loop.start()
+        activity_loop.start()
     
     async def on_command_error(self, ctx, error):
         await ctx.reply(error, ephemeral = True)
@@ -640,7 +640,7 @@ async def schedule_loop():
             pass
         
 # Register the bot status loop task
-@tasks.loop(minutes=2, reconnect=True)
+@tasks.loop(minutes=2)
 async def activity_loop():
     
     
@@ -658,4 +658,4 @@ async def activity_loop():
             await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"an offline server"))
         except Exception as e:
             print(e)
-            pass
+            await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"an offline server"))
