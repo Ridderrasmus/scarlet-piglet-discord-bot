@@ -189,8 +189,7 @@ class SPiglet(discord.Client):
         if not self.synced:
             await TREE.sync()
             self.synced = True
-        schedule_loop.start()
-        activity_loop.start()
+        loop_tasks.start()
     
     async def on_command_error(self, ctx, error):
         await ctx.reply(error, ephemeral = True)
@@ -625,9 +624,9 @@ async def check_dlc_message():
     
 
 
-# Register the schedule loop task
-@tasks.loop(hours=1)
+# The main bulk of the schedule loop
 async def schedule_loop():
+    print("Running schedule loop")
     await BOT.wait_until_ready()
     
     if not BOT.is_closed():        
@@ -639,9 +638,9 @@ async def schedule_loop():
         except:
             pass
         
-# Register the bot status loop task
-@tasks.loop(minutes=2)
+# The main bulk of the activity loop
 async def activity_loop():
+    print("Running activity loop")
     
     
     if not BOT.is_closed():
@@ -664,3 +663,15 @@ async def activity_loop():
             print("Something went wrong while updating the server status")
             await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"an offline server"))
             pass
+
+@tasks.loop(minutes=1)
+async def loop_tasks():
+    await BOT.wait_until_ready()
+    i = loop_tasks.current_loop
+    if i == 0:
+        print("Started loop tasks")
+    if (i % 2) == 0:
+        activity_loop
+        await schedule_loop()
+    if (i % 60) == 0:
+        await activity_loop()
