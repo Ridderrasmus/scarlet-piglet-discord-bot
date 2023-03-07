@@ -7,7 +7,7 @@ log = utils.log_handler
 
 def main():
     # Run the bot
-    BOT.run(token=os.getenv('DISCORD_TOKEN'), log_handler=log)
+    BOT.run(token=os.getenv('DISCORD_TOKEN'))
     
 
 if __name__ == "__main__":

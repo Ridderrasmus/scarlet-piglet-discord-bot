@@ -62,15 +62,11 @@ def update_local_sheet():
     modlist_message_info = get_cell_entry(4, 7)
     questionnaire_message_info = get_cell_entry(5, 7)
     
-    log.emit("Updated local sheet")
-    print(entire_sheet)
     
     
 # Update online sheet
 def update_online_sheet():
     sheet1.update(entire_sheet)
-    log.emit("Updated online sheet")
-    print(entire_sheet)
 
 # Get schedule messages
 def get_schedule_messages():
@@ -203,9 +199,12 @@ def get_schedule_dates():
     old_ops = [dates, names, authors]
     next_sundays = get_next_n_sundays(date_amount)
     ops = []
+    print("Old ops: " + str(old_ops))
+    print("Next sundays: " + str(next_sundays))
     
     # Go through all the ops that have taken place and add them to the archive sheet
     previous_sundays = [date for date in old_ops[0] if date not in next_sundays]
+    print("Previous sundays: " + str(previous_sundays))
     for old_sunday in previous_sundays:
         if (old_sunday != "Date"):
             index = old_ops[0].index(old_sunday)
@@ -243,7 +242,7 @@ def get_schedule_dates():
         names.append(ops[i][1])
         authors.append(ops[i][2])
         
-    log.emit("Schedule updated")
+    
     print([dates, names, authors])
 
     return [dates, names, authors]
