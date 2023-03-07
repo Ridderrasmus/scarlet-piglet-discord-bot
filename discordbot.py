@@ -595,16 +595,20 @@ async def check_dlc_message():
     print("Checking DLC message...")
     questionnaire_message = schedule.get_questionnaire_message()
     questionnaire_info = schedule.get_questionnaire_info()
+    guild = BOT.get_guild(questionnaire_message['guild_id'])
+    channel = guild.get_channel(questionnaire_message['channel_id'])
     
     
     if questionnaire_message == None:
         return
     
-    if questionnaire_message['guild_id'] not in [guild.id for guild in BOT.guilds]:
+    if guild == None:
         return
     
-    guild = BOT.get_guild(questionnaire_message['guild_id'])
-    channel = guild.get_channel(questionnaire_message['channel_id'])
+    if channel == None:
+        return
+
+    
     message = await channel.fetch_message(questionnaire_message['message_id'])
     reactions = message.reactions
     
