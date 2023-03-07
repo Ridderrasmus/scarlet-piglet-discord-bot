@@ -556,7 +556,7 @@ async def update_scheduled_messages(category : str, messages : dict):
                 # Check if the BOT is in the server
                 guild_id = server['guild_id']
                 guild = BOT.get_guild(guild_id)
-                if guild_id not in [guild.id for guild in BOT.guilds]:
+                if guild not in [guild for guild in BOT.guilds]:
                     continue
                 
                 # Check if the BOT is in the channel
