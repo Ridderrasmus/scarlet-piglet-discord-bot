@@ -554,12 +554,12 @@ async def update_scheduled_messages(category : str, messages : dict):
         # Check if the BOT is in the server
         guild_id = server['guild_id']
         guild = BOT.get_guild(guild_id)
-        if guild_id not in [guild.id for guild in BOT.guilds]:
+        if guild == None:
             continue
         
         # Check if the BOT is in the channel
         channel_id = server['channel_id']
-        channel = guild.get_channel(channel_id)
+        channel = BOT.get_channel(channel_id)
         if channel == None:
             continue
         
@@ -595,7 +595,6 @@ async def check_dlc_message():
     print("Checking DLC message...")
     questionnaire_message = schedule.get_questionnaire_message()
     questionnaire_info = schedule.get_questionnaire_info()
-    print("Got questionnaire info")
     guild = BOT.get_guild(questionnaire_message['guild_id'])
     channel = guild.get_channel(questionnaire_message['channel_id'])
     
@@ -640,12 +639,23 @@ async def schedule_loop():
     if not BOT.is_closed():        
         try:
             await check_dlc_message()
-            await update_scheduled_messages("schedule", schedule.get_schedule_messages())
-            await update_scheduled_messages("modlist", schedule.get_modlist_messages())
-            
         except Exception as e:
             print(e)
             pass
+
+        try:
+            await update_scheduled_messages("schedule", schedule.get_schedule_messages())
+        except Exception as e:
+            print(e)
+            pass
+
+        try:
+            await update_scheduled_messages("modlist", schedule.get_modlist_messages())
+        except Exception as e:
+            print(e)
+            pass
+        
+
         
 # The main bulk of the activity loop
 async def activity_loop():
