@@ -553,43 +553,43 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
 ## Function to update the scheduled messages (Modlists, OP schedules, etc.)
 async def update_scheduled_messages(category : str, messages : dict):
     for server in messages['servers']:
-                # Check if the BOT is in the server
-                guild_id = server['guild_id']
-                guild = BOT.get_guild(guild_id)
-                if guild_id not in [guild.id for guild in BOT.guilds]:
-                    continue
-                
-                # Check if the BOT is in the channel
-                channel_id = server['channel_id']
-                channel = guild.get_channel(channel_id)
-                if channel == None:
-                    continue
-                
-                # Check if the BOT has access to the message
-                message_id = server['message_id']
-                msg = await channel.fetch_message(message_id)
-                if msg == None:
-                    print(f'The {category} message for {guild.name} in channel {channel.name} could not be found! Removing it from the database.')
-                    if category == "schedule":
-                        schedule.remove_schedule_message(message_id)
-                    elif category == "modlist":
-                        schedule.remove_modlist_message(message_id)
-                    continue
-                
-                # Check if the BOT is the author of the message
-                if msg.author == BOT.user:
-                    continue
-                
-                # Update the message
-                print(f'Updating {category} for {guild.name} in channel {channel.name}')
-                if category == "schedule":
-                    print("Schedule stuff is happening")
-                    await msg.edit(content=format_schedule_message())
-                elif category == "modlist":
-                    file_path = server['file_path']
-                    file_name = retrieve_file_from_github(file_path)
-                    await msg.edit(attachments=[discord.File(f"files/{file_name}")])
-                    os.remove(f"files/{file_name}")
+        # Check if the BOT is in the server
+        guild_id = server['guild_id']
+        guild = BOT.get_guild(guild_id)
+        if guild_id not in [guild.id for guild in BOT.guilds]:
+            continue
+        
+        # Check if the BOT is in the channel
+        channel_id = server['channel_id']
+        channel = guild.get_channel(channel_id)
+        if channel == None:
+            continue
+        
+        # Check if the BOT has access to the message
+        message_id = server['message_id']
+        msg = await channel.fetch_message(message_id)
+        if msg == None:
+            print(f'The {category} message for {guild.name} in channel {channel.name} could not be found! Removing it from the database.')
+            if category == "schedule":
+                schedule.remove_schedule_message(message_id)
+            elif category == "modlist":
+                schedule.remove_modlist_message(message_id)
+            continue
+        
+        # Check if the BOT is the author of the message
+        if msg.author.id != BOT.user.id:
+            continue
+        
+        # Update the message
+        print(f'Updating {category} for {guild.name} in channel {channel.name}')
+        if category == "schedule":
+            print("Schedule stuff is happening")
+            await msg.edit(content=format_schedule_message())
+        elif category == "modlist":
+            file_path = server['file_path']
+            file_name = retrieve_file_from_github(file_path)
+            await msg.edit(attachments=[discord.File(f"files/{file_name}")])
+            os.remove(f"files/{file_name}")
 
 # Function that checks DLC message
 async def check_dlc_message():
