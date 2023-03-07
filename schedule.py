@@ -239,7 +239,7 @@ def get_schedule_dates():
         names.append(ops[i][1])
         authors.append(ops[i][2])
         
-
+    print([dates, names, authors])
     return [dates, names, authors]
         
 # Updates an op entry in the schedule

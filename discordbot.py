@@ -190,6 +190,7 @@ class SPiglet(discord.Client):
             await TREE.sync()
             self.synced = True
         loop_tasks.start()
+        
     
     async def on_command_error(self, ctx, error):
         await ctx.reply(error, ephemeral = True)
@@ -675,4 +676,4 @@ async def loop_tasks():
         await schedule_loop()
     if (i % 60) == 0:
         await activity_loop()
-        loop_tasks.restart()
+        
