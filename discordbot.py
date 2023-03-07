@@ -675,3 +675,4 @@ async def loop_tasks():
         await schedule_loop()
     if (i % 60) == 0:
         await activity_loop()
+        loop_tasks.restart()
