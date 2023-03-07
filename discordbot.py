@@ -654,8 +654,13 @@ async def activity_loop():
                 mission = a2s.info().game
                 plural_str = "s" if num_players != 1 else ""
                 await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{num_players} player" + plural_str + f" on {mission}", timestamps={"start" : starttime}))
+            print("Updated server status to online")
         except TimeoutError:
             await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"an offline server"))
+            print("Updated server status to offline")
+            pass
         except Exception as e:
             print(e)
+            print("Something went wrong while updating the server status")
             await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"an offline server"))
+            pass
