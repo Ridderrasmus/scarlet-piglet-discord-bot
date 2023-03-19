@@ -83,20 +83,22 @@ def get_emojis_in_message(message : str):
 
 # Remove reactions from a message by users not in a server
 async def remove_reaction_if_not_member(message, reaction, user):
-    if user not in message.guild.members:
+    guild = message.guild
+    try:
+        await guild.fetch_member(user.id)
+    except discord.NotFound:
         await message.remove_reaction(reaction.emoji, user)
         return user
     return None
 
 # Process reactions for a message
-async def process_reaction(message, reaction, questionnaire_info, i):
-    users = await reaction.users().flatten()
+async def process_reaction(message, reaction : discord.Reaction):
+    users = [user async for user in reaction.users()]
     removed_users = await asyncio.gather(*(remove_reaction_if_not_member(message, reaction, user) for user in users))
-    legacy_users = [user for user in removed_users if user is not None]
 
     count = reaction.count
-    questionnaire_info[i+1][1] = count - 1
-    return legacy_users
+    updated_count = count - 1
+    return updated_count
     
 
 ### --- Formatting related functions --- ###
@@ -625,11 +627,11 @@ async def check_dlc_message():
     message = await channel.fetch_message(questionnaire_message['message_id'])
     reactions = message.reactions
 
-    legacy_users = await asyncio.gather(*(process_reaction(message, reaction, questionnaire_info, i) for i, reaction in enumerate(reactions)))
-    legacy_users = [user_list for user_list in legacy_users if len(user_list) > 0]
+    updated_counts = await asyncio.gather(*(process_reaction(message, reaction) for reaction in reactions))
 
-    schedule.set_questionnaire_info(questionnaire_info)
-    print(questionnaire_info)
+    updated_questionnaire_info = [questionnaire_info[0]] + [[info[0], updated_counts[i], info[2]] for i, info in enumerate(questionnaire_info[1:])]
+
+    schedule.set_questionnaire_info(updated_questionnaire_info)
     print("Updated DLC poll graph")
     
 
