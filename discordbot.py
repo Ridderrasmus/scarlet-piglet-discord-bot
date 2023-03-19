@@ -686,8 +686,8 @@ async def loop_tasks():
     if i == 0:
         print("Started loop tasks")
     if (i % 2) == 0:
-        activity_loop
-        await schedule_loop()
+        await activity_loop()
     if (i % 60) == 0:
+        await schedule_loop()
         await activity_loop()
         
