@@ -142,7 +142,6 @@ def format_schedule_message_entry(entry : str, entry_type : int):
 
 # The function to format the schedule message
 def format_schedule_message():
-    print("Formatting schedule message")
     formatted_schedule = ""
     this_schedule = schedule.get_full_schedule()
     for booking in this_schedule:
@@ -203,6 +202,7 @@ class SPiglet(discord.Client):
         server_start_time = None
         super().__init__(intents=discord.Intents.default())
         self.synced = False
+        self.server_status = "offline"
     
     async def on_ready(self):
         await self.wait_until_ready()
@@ -418,6 +418,7 @@ async def createquestionnaire(interaction: discord.Interaction):
             await old_msg.delete()
         except:
             print("Couldn't delete old message")
+            pass
     
     dlcs = schedule.get_questionnaire_info()
     msg_content = f"**The Scarlet Pigs DLC Questionnaire**\n\nPlease react to this message with the DLCs you have to allow the mission makers to better keep track of which DLCs they can make use of.\n\n*DLCs:*\n{format_dlc_list(dlcs)}\n\n\nResults: https://docs.google.com/spreadsheets/d/e/2PACX-1vQYrmXaRK5P-FatQKhgiy6SEmyTX2sqSBvBxKg5Oz-hTYZMgeh8fFqgRD__mdSn5gC-3LqVC3u02WFJ/pubchart?oid=653336303&format=interactive"
@@ -609,7 +610,7 @@ async def update_scheduled_messages(category : str, messages : dict):
 
 # Function that checks DLC message
 async def check_dlc_message():
-    print('Checking DLC message...')
+    print('Updating DLC graph...')
     questionnaire_message = schedule.get_questionnaire_message()
     questionnaire_info = schedule.get_questionnaire_info()
     guild = BOT.get_guild(questionnaire_message['guild_id'])
@@ -632,7 +633,7 @@ async def check_dlc_message():
     updated_questionnaire_info = [questionnaire_info[0]] + [[info[0], updated_counts[i], info[2]] for i, info in enumerate(questionnaire_info[1:])]
 
     schedule.set_questionnaire_info(updated_questionnaire_info)
-    print("Updated DLC poll graph")
+
     
 
 
@@ -663,8 +664,6 @@ async def schedule_loop():
         
 # The main bulk of the activity loop
 async def activity_loop():
-    print("Running activity loop")
-    
     
     if not BOT.is_closed():
         
@@ -676,12 +675,18 @@ async def activity_loop():
                 mission = a2s.info().game
                 plural_str = "s" if num_players != 1 else ""
                 await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{num_players} player" + plural_str + f" on {mission}", timestamps={"start" : starttime}))
-            print("Updated server status to online")
+            if BOT.server_status == "offline":
+                BOT.server_status = "online"
+                print("Updated server status to online")
         except TimeoutError:
             await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"an offline server"))
-            print("Updated server status to offline")
+            if BOT.server_status == "online":
+                BOT.server_status = "offline"
+                print("Updated server status to offline")
             pass
         except Exception as e:
+            if BOT.server_status == "online":
+                BOT.server_status = "offline"
             print(e)
             print("Something went wrong while updating the server status")
             await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"an offline server"))
