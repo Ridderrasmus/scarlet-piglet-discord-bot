@@ -89,13 +89,14 @@ async def remove_reaction_if_not_member(message, reaction, user):
     except discord.NotFound:
         await message.remove_reaction(reaction.emoji, user)
         return user
-    await asyncio.sleep(1.5)
     return None
 
 # Process reactions for a message
 async def process_reaction(message, reaction : discord.Reaction):
+    
     users = [user async for user in reaction.users()]
-    removed_users = await asyncio.gather(*(remove_reaction_if_not_member(message, reaction, user) for user in users))
+    for user in users:
+        remove_reaction_if_not_member(message, reaction, user)
 
     count = reaction.count
     updated_count = count - 1
