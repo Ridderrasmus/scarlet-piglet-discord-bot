@@ -575,7 +575,6 @@ async def update_scheduled_messages(category : str, messages : dict):
             continue
         
         # Check if the BOT is the author of the message
-        print(msg.author.id, " - ", BOT.user.id)
         if msg.author.id != BOT.user.id:
             continue
         
@@ -612,7 +611,10 @@ async def check_dlc_message():
     
     legacy_users = []
     for i, reaction in enumerate(reactions):
-        x = [user not in guild.members async for user in reaction.users()]
+        x = []
+        async for user in reaction.users():
+            if user not in legacy_users:
+                x.append(user)
         if len(x) == 0:
             break
         for user in x:
