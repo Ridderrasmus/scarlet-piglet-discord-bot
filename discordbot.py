@@ -96,7 +96,7 @@ async def process_reaction(message, reaction : discord.Reaction):
     
     users = [user async for user in reaction.users()]
     for user in users:
-        remove_reaction_if_not_member(message, reaction, user)
+        await remove_reaction_if_not_member(message, reaction, user)
 
     count = reaction.count
     updated_count = count - 1
