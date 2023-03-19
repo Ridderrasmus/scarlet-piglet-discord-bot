@@ -89,7 +89,7 @@ async def remove_reaction_if_not_member(message, reaction, user):
     except discord.NotFound:
         await message.remove_reaction(reaction.emoji, user)
         return user
-    await asyncio.sleep(0.2)
+    await asyncio.sleep(1.5)
     return None
 
 # Process reactions for a message
