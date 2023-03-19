@@ -575,6 +575,7 @@ async def update_scheduled_messages(category : str, messages : dict):
             continue
         
         # Check if the BOT is the author of the message
+        print(msg.author.id, " - ", BOT.user.id)
         if msg.author.id != BOT.user.id:
             continue
         
@@ -595,7 +596,6 @@ async def check_dlc_message():
     questionnaire_info = schedule.get_questionnaire_info()
     guild = BOT.get_guild(questionnaire_message['guild_id'])
     channel = guild.get_channel(questionnaire_message['channel_id'])
-    print("Test 1")
     
     if questionnaire_message == None:
         return
@@ -609,7 +609,6 @@ async def check_dlc_message():
     
     message = await channel.fetch_message(questionnaire_message['message_id'])
     reactions = message.reactions
-    print("Test 2")
     
     legacy_users = []
     for i, reaction in enumerate(reactions):
@@ -622,9 +621,9 @@ async def check_dlc_message():
         
         count = reaction.count
         questionnaire_info[i+1][1] = count - 1
-    print("Test 3")
     
     schedule.set_questionnaire_info(questionnaire_info)
+    print(questionnaire_info)
     print("Updated DLC poll graph")
     
 
