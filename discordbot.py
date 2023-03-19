@@ -11,7 +11,7 @@ import base64
 import io
 import asyncio
 import emoji as emoji_lib
-import utils
+import asyncio
 
 
 ## Github setup
@@ -80,6 +80,23 @@ def get_emojis_in_message(message : str):
             for e in emoji_lib.distinct_emoji_list(emoji):
                 emoji_list.append(emoji_lib.demojize(e))
     return emoji_list
+
+# Remove reactions from a message by users not in a server
+async def remove_reaction_if_not_member(message, reaction, user):
+    if user not in message.guild.members:
+        await message.remove_reaction(reaction.emoji, user)
+        return user
+    return None
+
+# Process reactions for a message
+async def process_reaction(message, reaction, questionnaire_info, i):
+    users = await reaction.users().flatten()
+    removed_users = await asyncio.gather(*(remove_reaction_if_not_member(message, reaction, user) for user in users))
+    legacy_users = [user for user in removed_users if user is not None]
+
+    count = reaction.count
+    questionnaire_info[i+1][1] = count - 1
+    return legacy_users
     
 
 ### --- Formatting related functions --- ###
@@ -595,35 +612,22 @@ async def check_dlc_message():
     questionnaire_info = schedule.get_questionnaire_info()
     guild = BOT.get_guild(questionnaire_message['guild_id'])
     channel = guild.get_channel(questionnaire_message['channel_id'])
-    
-    if questionnaire_message == None:
-        return
-    
-    if guild == None:
-        return
-    
-    if channel == None:
+
+    if questionnaire_message is None:
         return
 
-    
+    if guild is None:
+        return
+
+    if channel is None:
+        return
+
     message = await channel.fetch_message(questionnaire_message['message_id'])
     reactions = message.reactions
-    
-    legacy_users = []
-    for i, reaction in enumerate(reactions):
-        x = []
-        async for user in reaction.users():
-            if user not in legacy_users:
-                x.append(user)
-        if len(x) == 0:
-            break
-        for user in x:
-            await message.remove_reaction(reaction.emoji, user)
-        legacy_users.append(x)
-        
-        count = reaction.count
-        questionnaire_info[i+1][1] = count - 1
-    
+
+    legacy_users = await asyncio.gather(*(process_reaction(message, reaction, questionnaire_info, i) for i, reaction in enumerate(reactions)))
+    legacy_users = [user_list for user_list in legacy_users if len(user_list) > 0]
+
     schedule.set_questionnaire_info(questionnaire_info)
     print(questionnaire_info)
     print("Updated DLC poll graph")
