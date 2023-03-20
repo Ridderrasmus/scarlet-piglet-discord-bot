@@ -251,7 +251,7 @@ class DateSelect(discord.ui.Select):
             embed = discord.Embed(title = "Reserved a Sunday", description = f"Op named {self.opname} made by {self.opauthor} is booked for {self.values[0]}.", timestamp = datetime.datetime.utcnow(), color = discord.Colour.blue())
             embed.set_author(name = interaction.user, icon_url = interaction.user.display_avatar)
             content = "Date picked."
-        await schedule_loop()
+        await update_scheduled_messages("schedule", schedule.get_schedule_messages())
         await interaction.edit_original_response(content=content, embed = embed, view=None)
 
 # Define the edit op Select
