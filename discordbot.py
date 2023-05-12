@@ -13,7 +13,6 @@ import asyncio
 import emoji as emoji_lib
 import asyncio
 
-semaphore = asyncio.Semaphore(3)
 
 ## Github setup
 gh = Github(login_or_token=os.getenv("GITHUB_TOKEN"))
@@ -94,14 +93,13 @@ async def remove_reaction_if_not_member(message, reaction, user):
 
 # Process reactions for a message
 async def process_reaction(message, reaction : discord.Reaction):
-    async with semaphore:
-        users = [user async for user in reaction.users()]
-        for user in users:
-            await remove_reaction_if_not_member(message, reaction, user)
+    users = [user async for user in reaction.users()]
+    for user in users:
+        await remove_reaction_if_not_member(message, reaction, user)
 
-        count = reaction.count
-        updated_count = count - 1
-        return updated_count
+    count = reaction.count
+    updated_count = count - 1
+    return updated_count
     
 
 ### --- Formatting related functions --- ###
