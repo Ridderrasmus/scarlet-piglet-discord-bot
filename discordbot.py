@@ -644,19 +644,19 @@ async def schedule_loop():
     
     if not BOT.is_closed():        
         try:
-            await check_dlc_message()
+            asyncio.create_task(check_dlc_message())
         except Exception as e:
             print(e)
             pass
 
         try:
-            await update_scheduled_messages("schedule", schedule.get_schedule_messages())
+            asyncio.create_task(update_scheduled_messages("schedule", schedule.get_schedule_messages()))
         except Exception as e:
             print(e)
             pass
 
         try:
-            await update_scheduled_messages("modlist", schedule.get_modlist_messages())
+            asyncio.create_task(update_scheduled_messages("modlist", schedule.get_modlist_messages()))
         except Exception as e:
             print(e)
             pass
@@ -668,22 +668,24 @@ async def activity_loop():
     
     if not BOT.is_closed():
         
+        print ("Updating server status...")
+        
         try:
-            with A2SQuery(os.getenv("SERVER_IP"), int(os.getenv("SERVER_PORT")) + 1, timeout=5) as a2s:
+            with A2SQuery(os.getenv("SERVER_IP"), int(os.getenv("SERVER_PORT")) + 1, timeout=7) as a2s:
                 num_players = a2s.info().players
-                duration = a2s.info().duration
-                starttime = datetime.datetime.now() - datetime.timedelta(seconds=duration)
                 mission = a2s.info().game
                 plural_str = "s" if num_players != 1 else ""
-                await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{num_players} player" + plural_str + f" on {mission}", timestamps={"start" : starttime}))
+                await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{num_players} player" + plural_str + f" on {mission}"))
             if BOT.server_status == "offline":
                 BOT.server_status = "online"
                 print("Updated server status to online")
+            print(1)
         except TimeoutError:
             await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"an offline server"))
             if BOT.server_status == "online":
                 BOT.server_status = "offline"
                 print("Updated server status to offline")
+            print(2)
             pass
         except Exception as e:
             if BOT.server_status == "online":
@@ -691,7 +693,10 @@ async def activity_loop():
             print(e)
             print("Something went wrong while updating the server status")
             await BOT.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"an offline server"))
+            print(3)
             pass
+        
+        print ("Checked server status")
 
 @tasks.loop(minutes=1)
 async def loop_tasks():
