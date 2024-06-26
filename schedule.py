@@ -287,13 +287,21 @@ def get_schedule_dates():
 
 
 def update_op(datex, opname=None, opauthor=None):
-
     for i in range(1, len(entire_sheet)):
         if entire_sheet[i][0] == datex:
             if opname != None:
                 entire_sheet[i][1] = opname
             if opauthor != None:
                 entire_sheet[i][2] = opauthor
+            break
+    update_online_sheet()
+    return None
+
+
+def delete_op(datex):
+    for i in range(1, len(entire_sheet)):
+        if entire_sheet[i][0] == datex:
+            entire_sheet[i] = [datex, "", ""]
             break
     update_online_sheet()
     return None

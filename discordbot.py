@@ -221,6 +221,9 @@ class SPiglet(discord.Client):
     async def on_ready(self):
         await self.wait_until_ready()
         if not self.synced:
+            print("Syncing commands...")
+            for com in TREE.get_commands():
+                print(f"Syncing {com.name}")
             await TREE.sync()
             self.synced = True
         loop_tasks.start()
@@ -275,9 +278,9 @@ class DateSelect(discord.ui.Select):
                 self.values[0], "%b %d (%y)").replace(hour=15, minute=0, second=0)
             endtime = datetime.datetime.strptime(
                 self.values[0], "%b %d (%y)").replace(hour=18, minute=0, second=0)
-
-            scarletpigsapi.create_event(self.opname, f"Op made by {
-                                        self.opauthor}", interaction.user.id, starttime, endtime)
+            description = f"Op made by {self.opauthor}"
+            scarletpigsapi.create_event(
+                self.opname, description, 0, starttime, endtime)
 
         await update_scheduled_messages("schedule", schedule.get_schedule_messages())
         await interaction.edit_original_response(content=content, embed=embed, view=None)
@@ -286,7 +289,8 @@ class DateSelect(discord.ui.Select):
 
 
 class OpEditSelect(discord.ui.Select):
-    def __init__(self):
+    def __init__(self, isDelete: bool = False):
+        self.isDelete = isDelete
         next_booked_ops = schedule.get_booked_dates()
         options = []
         for booked_op in next_booked_ops:
@@ -297,8 +301,17 @@ class OpEditSelect(discord.ui.Select):
                          min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        date = schedule.get_op_data(date=self.values[0])
-        await interaction.response.send_modal(OpEditModal(date[0], date[1], date[2]))
+        op = schedule.get_op_data(date=self.values[0])
+        if (self.isDelete):
+            # Delete the event from the API
+            event_id = scarletpigsapi.get_event_at_date(datetime.datetime.strptime(
+                op[0], "%b %d (%y)").replace(hour=16, minute=0, second=0))["id"]
+            scarletpigsapi.delete_event(event_id)
+            # Delete the event from the schedule
+            schedule.delete_op(op[0])
+            await interaction.response.send_message(content=f"Op {op[1]} deleted", ephemeral=True)
+        else:
+            await interaction.response.send_modal(OpEditModal(op[0], op[1], op[2]))
 
 
 ######################
@@ -319,6 +332,14 @@ class OpEditModal(discord.ui.Modal, title="Edit an op"):
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
         schedule.update_op(self.date, self.opname.value, self.author.value)
+
+        isodate = datetime.datetime.strptime(
+            self.date, "%b %d (%y)").replace(hour=16, minute=0, second=0)
+        event = scarletpigsapi.get_event_at_date(isodate)
+        event["name"] = self.opname.value
+        event["description"] = f"Op made by {self.author.value}"
+        scarletpigsapi.edit_event(event)
+
         await schedule_loop()
         embed = discord.Embed(title="Edited a Sunday", description=f"Op named {self.opname.value} made by {
                               self.author.value} is booked for {self.date}.", timestamp=datetime.datetime.utcnow(), color=discord.Colour.blue())
@@ -395,6 +416,18 @@ async def editsunday(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     view = discord.ui.View(timeout=180).add_item(OpEditSelect())
     await interaction.followup.send(content="Which op do you want to edit? ", view=view)
+
+
+# Register the delete op command
+
+
+@TREE.command(name="deletesunday", description="Delete a booked op")
+@app_commands.checks.has_role("Mission Maker")
+async def deletesunday(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    view = discord.ui.View(timeout=180).add_item(OpEditSelect(isDelete=True))
+    await interaction.followup.send(content="Which op do you want to delete? ", view=view)
+
 
 # Register the create schedule message command
 
