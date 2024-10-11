@@ -26,12 +26,12 @@ def get_event_at_date(datetime: datetime.datetime):
     return None
 
 
-def create_event(name: str, description: str, author: str, starttime: datetime.datetime, endtime: datetime.datetime):
+def create_event(name: str, description: str, author: int, starttime: datetime.datetime, endtime: datetime.datetime):
     # Make the request
     event = {
         'name': name,
         'description': description,
-        'createdByUser': author,
+        'createdByUserId': -1,
         'eventTypeId': -1,
         'startTime': starttime.isoformat(),
         'endTime': endtime.isoformat()
@@ -49,12 +49,12 @@ def get_event(event_id: int):
     return response.json()
 
 
-def edit_event(id: int, name: str, description: str, author: str, starttime: datetime.datetime, endtime: datetime.datetime):
+def edit_event(id: int, name: str, description: str, starttime: datetime.datetime, endtime: datetime.datetime):
     edited_event = {
         "id": id,
         "name": name,
         "description": description,
-        "createdByUser": author,
+        "createdByUserId": 0,
         "eventTypeId": 0,
         "startTime": starttime.isoformat(),
         "endTime": endtime.isoformat()
