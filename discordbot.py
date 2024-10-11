@@ -266,6 +266,7 @@ class DateSelect(discord.ui.Select):
                              icon_url=interaction.user.display_avatar)
             content = "No date picked."
         else:
+            # Update the schedule
             schedule.update_op(self.values[0], self.opname, self.opauthor)
             embed = discord.Embed(title="Reserved a Sunday", description=f"Op named {self.opname} made by {
                                   self.opauthor} is booked for {self.values[0]}.", timestamp=datetime.datetime.utcnow(), color=discord.Colour.blue())
@@ -280,7 +281,7 @@ class DateSelect(discord.ui.Select):
                 self.values[0], "%b %d (%y)").replace(hour=18, minute=0, second=0)
             description = f"Op made by {self.opauthor}"
             scarletpigsapi.create_event(
-                self.opname, description, 0, starttime, endtime)
+                self.opname, description, interaction.user.name, starttime, endtime)
 
         await update_scheduled_messages("schedule", schedule.get_schedule_messages())
         await interaction.edit_original_response(content=content, embed=embed, view=None)
@@ -331,18 +332,31 @@ class OpEditModal(discord.ui.Modal, title="Edit an op"):
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        schedule.update_op(self.date, self.opname.value, self.author.value)
 
+        # Edit the event in the API
         isodate = datetime.datetime.strptime(
             self.date, "%b %d (%y)").replace(hour=16, minute=0, second=0)
         event = scarletpigsapi.get_event_at_date(isodate)
+
+        # Check if the user is the creator of the op
+        if event["createdByUser"] != interaction.user.name and not (event["createdByUser"] == "" or event["createdByUser"] == None):
+            await interaction.followup.send(content="You are not the creator of this op.", ephemeral=True)
+            return
+
         event["name"] = self.opname.value
         event["description"] = f"Op made by {self.author.value}"
+        if event["createdByUser"] == None or event["createdByUser"] == "":
+            event["createdByUser"] = interaction.user.name
         scarletpigsapi.edit_event(event)
 
+        # Update the schedule
+        schedule.update_op(self.date, self.opname.value, self.author.value)
+
         await schedule_loop()
-        embed = discord.Embed(title="Edited a Sunday", description=f"Op named {self.opname.value} made by {
-                              self.author.value} is booked for {self.date}.", timestamp=datetime.datetime.utcnow(), color=discord.Colour.blue())
+        embed = discord.Embed(title="Edited a Sunday",
+                              description=f"Op named {self.opname.value} made by {self.author.value} is booked for {self.date}.",
+                              timestamp=datetime.datetime.utcnow(),
+                              color=discord.Colour.blue())
         await interaction.followup.send(content="Op edited", embed=embed, ephemeral=True)
 
 # Define the edit BOT message modal with the given variable when called (the message to edit)
