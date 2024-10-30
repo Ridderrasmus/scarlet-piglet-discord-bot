@@ -29,12 +29,11 @@ def get_event_at_date(datetime: datetime.datetime):
 def create_event(name: str, description: str, author: int, starttime: datetime.datetime, endtime: datetime.datetime):
     # Make the request
     event = {
-        'name': name,
-        'description': description,
-        'createdByUserId': -1,
-        'eventTypeId': -1,
-        'startTime': starttime.isoformat(),
-        'endTime': endtime.isoformat()
+        "name": name,
+        "description": description,
+        "CreatorDiscordUsername": "",
+        "startTime": starttime.isoformat(),
+        "endTime": endtime.isoformat()
     }
     response = requests.post(API_URL + '/events', json=event)
     print(response.text)
@@ -54,8 +53,7 @@ def edit_event(id: int, name: str, description: str, starttime: datetime.datetim
         "id": id,
         "name": name,
         "description": description,
-        "createdByUserId": 0,
-        "eventTypeId": 0,
+        "CreatorDiscordUsername": "",
         "startTime": starttime.isoformat(),
         "endTime": endtime.isoformat()
     }
