@@ -279,8 +279,9 @@ class DateSelect(discord.ui.Select):
             endtime = datetime.datetime.strptime(
                 self.values[0], "%b %d (%y)").replace(hour=18, minute=0, second=0)
             description = f"Op made by {self.opauthor}"
+            author = interaction.user.id
             scarletpigsapi.create_event(
-                self.opname, description, 0, starttime, endtime)
+                self.opname, description, author, starttime, endtime)
 
         await update_scheduled_messages("schedule", schedule.get_schedule_messages())
         await interaction.edit_original_response(content=content, embed=embed, view=None)
