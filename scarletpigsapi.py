@@ -26,7 +26,7 @@ def get_event_at_date(datetime: datetime.datetime):
     return None
 
 
-def create_event(name: str, description: str, author: int, starttime: datetime.datetime, endtime: datetime.datetime):
+def create_event(name: str, description: str, author: str, authorid: int, starttime: datetime.datetime, endtime: datetime.datetime):
 
     # Shorten description if it's too long
     if len(description) > 150:
@@ -35,8 +35,8 @@ def create_event(name: str, description: str, author: int, starttime: datetime.d
     # Make the request
     event = {
         "name": name,
-        "CreatorDiscordUsername": f"{author}",
-        "Author": description[:12],
+        "CreatorDiscordUsername": f"{authorid}",
+        "author": author,
         "Description": description,
         "startTime": starttime.isoformat(),
         "endTime": endtime.isoformat()
