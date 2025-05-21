@@ -11,11 +11,14 @@ log = utils.log_handler
 
 # Load environment variables
 load_dotenv()
+private_key = os.getenv('PRIVATE_KEY')
+if private_key is None:
+    raise ValueError("PRIVATE_KEY environment variable is not set.")
 keyvar = {
     "type": os.getenv('TYPE'),
     "project_id": os.getenv('PROJECT_ID'),
     "private_key_id": os.getenv('PRIVATE_KEY_ID'),
-    "private_key": os.getenv('PRIVATE_KEY').replace('\\n', '\n'),
+    "private_key": private_key.replace('\\n', '\n'),
     "client_email": os.getenv('CLIENT_EMAIL'),
     "client_id": os.getenv('CLIENT_ID'),
     "auth_uri": os.getenv('AUTH_URI'),
@@ -28,11 +31,14 @@ keyvar = {
 scope = ['https://www.googleapis.com/auth/spreadsheets',
          "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(
-    keyfile_dict=keyvar, scopes=scope)
-client = gspread.authorize(creds)
+    keyfile_dict=keyvar, scopes=scope)  # type: ignore
+client = gspread.authorize(creds)  # type: ignore
 
 # Set up sheets
-sheets = client.open(os.getenv("GOOGLE_SHEET_NAME")).worksheets()
+sheet_name = os.getenv("GOOGLE_SHEET_NAME")
+if sheet_name is None:
+    raise ValueError("GOOGLE_SHEET_NAME environment variable is not set.")
+sheets = client.open(sheet_name).worksheets()
 sheet1 = sheets[0]
 archive_sheet = sheets[1]
 dlc_sheet = sheets[2]
