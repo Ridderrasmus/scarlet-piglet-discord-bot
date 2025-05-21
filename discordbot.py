@@ -1,6 +1,5 @@
 from discord.ext import commands, tasks
 from discord import ui, app_commands, Interaction
-from discord.guild import GuildChannel
 from a2squery import A2SQuery
 from github import Github
 import datetime
